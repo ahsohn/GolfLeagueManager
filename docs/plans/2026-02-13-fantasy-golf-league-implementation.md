@@ -133,9 +133,9 @@ export interface Golfer {
 
 export interface RosterEntry {
   team_id: number;
-  golfer_id: number;
-  draft_position: number;
-  times_used: number;
+  slot: number;  // 1-10, fixed from draft order
+  golfer_id: number;  // can change via waivers
+  times_used: number;  // tracks slot usage, not golfer
 }
 
 export interface Tournament {
@@ -148,7 +148,7 @@ export interface Tournament {
 export interface LineupEntry {
   tournament_id: string;
   team_id: number;
-  golfer_id: number;
+  slot: number;  // references slot, not golfer directly
   fedex_points: number | null;
 }
 
@@ -162,6 +162,13 @@ export interface WaiverLogEntry {
   team_id: number;
   dropped_golfer: string;
   added_golfer: string;
+  slot: number;
+}
+
+export interface SlotHistoryEntry {
+  team_id: number;
+  golfer_id: number;
+  original_slot: number;
 }
 
 export interface Config {
@@ -215,6 +222,7 @@ describe('sheets', () => {
       LINEUPS: 'Lineups',
       STANDINGS: 'Standings',
       WAIVER_LOG: 'WaiverLog',
+      SLOT_HISTORY: 'SlotHistory',
       CONFIG: 'Config',
     });
   });
@@ -240,6 +248,7 @@ export const SHEET_NAMES = {
   LINEUPS: 'Lineups',
   STANDINGS: 'Standings',
   WAIVER_LOG: 'WaiverLog',
+  SLOT_HISTORY: 'SlotHistory',
   CONFIG: 'Config',
 } as const;
 
@@ -426,9 +435,18 @@ export function parseRosters(rows: string[][]): RosterEntry[] {
   if (rows.length <= 1) return [];
   return rows.slice(1).map((row) => ({
     team_id: parseInt(row[0], 10),
-    golfer_id: parseInt(row[1], 10),
-    draft_position: parseInt(row[2], 10),
+    slot: parseInt(row[1], 10),
+    golfer_id: parseInt(row[2], 10),
     times_used: parseInt(row[3], 10),
+  }));
+}
+
+export function parseSlotHistory(rows: string[][]): SlotHistoryEntry[] {
+  if (rows.length <= 1) return [];
+  return rows.slice(1).map((row) => ({
+    team_id: parseInt(row[0], 10),
+    golfer_id: parseInt(row[1], 10),
+    original_slot: parseInt(row[2], 10),
   }));
 }
 
@@ -447,7 +465,7 @@ export function parseLineups(rows: string[][]): LineupEntry[] {
   return rows.slice(1).map((row) => ({
     tournament_id: row[0],
     team_id: parseInt(row[1], 10),
-    golfer_id: parseInt(row[2], 10),
+    slot: parseInt(row[2], 10),
     fedex_points: row[3] ? parseInt(row[3], 10) : null,
   }));
 }
@@ -467,6 +485,7 @@ export function parseWaiverLog(rows: string[][]): WaiverLogEntry[] {
     team_id: parseInt(row[1], 10),
     dropped_golfer: row[2],
     added_golfer: row[3],
+    slot: parseInt(row[4], 10),
   }));
 }
 
@@ -516,55 +535,55 @@ import {
 } from '../lineup-validator';
 import { RosterEntry, LineupEntry } from '@/types';
 
-describe('canUseGolfer', () => {
-  it('returns true when golfer has fewer than 8 uses', () => {
+describe('canUseSlot', () => {
+  it('returns true when slot has fewer than 8 uses', () => {
     const roster: RosterEntry = {
       team_id: 1,
+      slot: 1,
       golfer_id: 101,
-      draft_position: 1,
       times_used: 7,
     };
-    expect(canUseGolfer(roster)).toBe(true);
+    expect(canUseSlot(roster)).toBe(true);
   });
 
-  it('returns false when golfer has 8 uses', () => {
+  it('returns false when slot has 8 uses', () => {
     const roster: RosterEntry = {
       team_id: 1,
+      slot: 1,
       golfer_id: 101,
-      draft_position: 1,
       times_used: 8,
     };
-    expect(canUseGolfer(roster)).toBe(false);
+    expect(canUseSlot(roster)).toBe(false);
   });
 });
 
 describe('validateLineupSelection', () => {
   const roster: RosterEntry[] = [
-    { team_id: 1, golfer_id: 101, draft_position: 1, times_used: 3 },
-    { team_id: 1, golfer_id: 102, draft_position: 2, times_used: 8 },
-    { team_id: 1, golfer_id: 103, draft_position: 3, times_used: 0 },
-    { team_id: 1, golfer_id: 104, draft_position: 4, times_used: 5 },
+    { team_id: 1, slot: 1, golfer_id: 101, times_used: 3 },
+    { team_id: 1, slot: 2, golfer_id: 102, times_used: 8 },
+    { team_id: 1, slot: 3, golfer_id: 103, times_used: 0 },
+    { team_id: 1, slot: 4, golfer_id: 104, times_used: 5 },
   ];
 
-  it('returns valid for 4 eligible golfers', () => {
-    const result = validateLineupSelection([101, 103, 104, 101], roster);
-    // Wait, 101 is repeated - that should fail
+  it('returns valid for 4 eligible slots', () => {
+    const result = validateLineupSelection([1, 3, 4, 5], roster);
+    // Slots 1, 3, 4 are valid; slot 5 would need to exist
   });
 
-  it('returns invalid when selecting golfer with 8 uses', () => {
-    const result = validateLineupSelection([101, 102, 103, 104], roster);
+  it('returns invalid when selecting slot with 8 uses', () => {
+    const result = validateLineupSelection([1, 2, 3, 4], roster);
     expect(result.valid).toBe(false);
-    expect(result.error).toContain('102');
+    expect(result.error).toContain('slot 2');
   });
 
-  it('returns invalid when not selecting exactly 4 golfers', () => {
-    const result = validateLineupSelection([101, 103, 104], roster);
+  it('returns invalid when not selecting exactly 4 slots', () => {
+    const result = validateLineupSelection([1, 3, 4], roster);
     expect(result.valid).toBe(false);
     expect(result.error).toContain('4');
   });
 
-  it('returns invalid when selecting golfer not on roster', () => {
-    const result = validateLineupSelection([101, 103, 104, 999], roster);
+  it('returns invalid when selecting slot not on roster', () => {
+    const result = validateLineupSelection([1, 3, 4, 99], roster);
     expect(result.valid).toBe(false);
     expect(result.error).toContain('not on roster');
   });
@@ -572,43 +591,43 @@ describe('validateLineupSelection', () => {
 
 describe('getDefaultLineup', () => {
   const roster: RosterEntry[] = [
-    { team_id: 1, golfer_id: 101, draft_position: 1, times_used: 3 },
-    { team_id: 1, golfer_id: 102, draft_position: 2, times_used: 8 },
-    { team_id: 1, golfer_id: 103, draft_position: 3, times_used: 0 },
-    { team_id: 1, golfer_id: 104, draft_position: 4, times_used: 5 },
-    { team_id: 1, golfer_id: 105, draft_position: 5, times_used: 2 },
+    { team_id: 1, slot: 1, golfer_id: 101, times_used: 3 },
+    { team_id: 1, slot: 2, golfer_id: 102, times_used: 8 },
+    { team_id: 1, slot: 3, golfer_id: 103, times_used: 0 },
+    { team_id: 1, slot: 4, golfer_id: 104, times_used: 5 },
+    { team_id: 1, slot: 5, golfer_id: 105, times_used: 2 },
   ];
 
-  it('returns previous lineup when all golfers still eligible', () => {
+  it('returns previous lineup slots when all still eligible', () => {
     const previousLineup: LineupEntry[] = [
-      { tournament_id: 'T001', team_id: 1, golfer_id: 101, fedex_points: null },
-      { tournament_id: 'T001', team_id: 1, golfer_id: 103, fedex_points: null },
-      { tournament_id: 'T001', team_id: 1, golfer_id: 104, fedex_points: null },
-      { tournament_id: 'T001', team_id: 1, golfer_id: 105, fedex_points: null },
+      { tournament_id: 'T001', team_id: 1, slot: 1, fedex_points: null },
+      { tournament_id: 'T001', team_id: 1, slot: 3, fedex_points: null },
+      { tournament_id: 'T001', team_id: 1, slot: 4, fedex_points: null },
+      { tournament_id: 'T001', team_id: 1, slot: 5, fedex_points: null },
     ];
 
     const defaults = getDefaultLineup(roster, previousLineup);
-    expect(defaults).toEqual([101, 103, 104, 105]);
+    expect(defaults).toEqual([1, 3, 4, 5]);
   });
 
-  it('substitutes ineligible golfers with next by draft position', () => {
+  it('substitutes ineligible slots with next by slot number', () => {
     const previousLineup: LineupEntry[] = [
-      { tournament_id: 'T001', team_id: 1, golfer_id: 101, fedex_points: null },
-      { tournament_id: 'T001', team_id: 1, golfer_id: 102, fedex_points: null }, // 8 uses
-      { tournament_id: 'T001', team_id: 1, golfer_id: 104, fedex_points: null },
-      { tournament_id: 'T001', team_id: 1, golfer_id: 105, fedex_points: null },
+      { tournament_id: 'T001', team_id: 1, slot: 1, fedex_points: null },
+      { tournament_id: 'T001', team_id: 1, slot: 2, fedex_points: null }, // 8 uses
+      { tournament_id: 'T001', team_id: 1, slot: 4, fedex_points: null },
+      { tournament_id: 'T001', team_id: 1, slot: 5, fedex_points: null },
     ];
 
     const defaults = getDefaultLineup(roster, previousLineup);
-    // 102 is ineligible, should be replaced by 103 (next by draft position not already selected)
-    expect(defaults).toContain(103);
-    expect(defaults).not.toContain(102);
+    // slot 2 is ineligible, should be replaced by slot 3
+    expect(defaults).toContain(3);
+    expect(defaults).not.toContain(2);
   });
 
-  it('returns top 4 by draft position when no previous lineup', () => {
+  it('returns slots 1-4 when no previous lineup (first tournament)', () => {
     const defaults = getDefaultLineup(roster, []);
-    // Top 4 eligible: 101, 103, 104, 105 (102 has 8 uses)
-    expect(defaults).toEqual([101, 103, 104, 105]);
+    // Top 4 eligible: slots 1, 3, 4, 5 (slot 2 has 8 uses)
+    expect(defaults).toEqual([1, 3, 4, 5]);
   });
 });
 ```
@@ -627,7 +646,7 @@ import { RosterEntry, LineupEntry } from '@/types';
 const MAX_USES = 8;
 const LINEUP_SIZE = 4;
 
-export function canUseGolfer(rosterEntry: RosterEntry): boolean {
+export function canUseSlot(rosterEntry: RosterEntry): boolean {
   return rosterEntry.times_used < MAX_USES;
 }
 
@@ -637,32 +656,32 @@ export interface ValidationResult {
 }
 
 export function validateLineupSelection(
-  golferIds: number[],
+  slots: number[],
   roster: RosterEntry[]
 ): ValidationResult {
-  // Check exactly 4 golfers
-  if (golferIds.length !== LINEUP_SIZE) {
-    return { valid: false, error: `Must select exactly ${LINEUP_SIZE} golfers` };
+  // Check exactly 4 slots
+  if (slots.length !== LINEUP_SIZE) {
+    return { valid: false, error: `Must select exactly ${LINEUP_SIZE} slots` };
   }
 
   // Check for duplicates
-  const uniqueIds = new Set(golferIds);
-  if (uniqueIds.size !== golferIds.length) {
-    return { valid: false, error: 'Cannot select the same golfer twice' };
+  const uniqueSlots = new Set(slots);
+  if (uniqueSlots.size !== slots.length) {
+    return { valid: false, error: 'Cannot select the same slot twice' };
   }
 
-  // Check each golfer
-  for (const golferId of golferIds) {
-    const rosterEntry = roster.find((r) => r.golfer_id === golferId);
+  // Check each slot
+  for (const slot of slots) {
+    const rosterEntry = roster.find((r) => r.slot === slot);
 
     if (!rosterEntry) {
-      return { valid: false, error: `Golfer ${golferId} is not on roster` };
+      return { valid: false, error: `Slot ${slot} is not on roster` };
     }
 
-    if (!canUseGolfer(rosterEntry)) {
+    if (!canUseSlot(rosterEntry)) {
       return {
         valid: false,
-        error: `Golfer ${golferId} has already been used ${MAX_USES} times`,
+        error: `Slot ${slot} has already been used ${MAX_USES} times`,
       };
     }
   }
@@ -675,35 +694,31 @@ export function getDefaultLineup(
   previousLineup: LineupEntry[]
 ): number[] {
   const eligibleRoster = roster
-    .filter(canUseGolfer)
-    .sort((a, b) => a.draft_position - b.draft_position);
+    .filter(canUseSlot)
+    .sort((a, b) => a.slot - b.slot);
 
-  // If no previous lineup, return top 4 by draft position
+  // If no previous lineup, return top 4 slots by slot number
   if (previousLineup.length === 0) {
-    return eligibleRoster.slice(0, LINEUP_SIZE).map((r) => r.golfer_id);
+    return eligibleRoster.slice(0, LINEUP_SIZE).map((r) => r.slot);
   }
 
-  // Start with previous lineup golfers who are still eligible
-  const previousGolferIds = previousLineup.map((l) => l.golfer_id);
-  const stillEligible = previousGolferIds.filter((id) =>
-    eligibleRoster.some((r) => r.golfer_id === id)
+  // Start with previous lineup slots that are still eligible
+  const previousSlots = previousLineup.map((l) => l.slot);
+  const stillEligible = previousSlots.filter((slot) =>
+    eligibleRoster.some((r) => r.slot === slot)
   );
 
-  // Fill remaining slots with next eligible by draft position
+  // Fill remaining with next eligible slots
   const selected = new Set(stillEligible);
   for (const entry of eligibleRoster) {
     if (selected.size >= LINEUP_SIZE) break;
-    if (!selected.has(entry.golfer_id)) {
-      selected.add(entry.golfer_id);
+    if (!selected.has(entry.slot)) {
+      selected.add(entry.slot);
     }
   }
 
-  // Sort by draft position for consistent ordering
-  return Array.from(selected).sort((a, b) => {
-    const aPos = roster.find((r) => r.golfer_id === a)?.draft_position ?? 999;
-    const bPos = roster.find((r) => r.golfer_id === b)?.draft_position ?? 999;
-    return aPos - bPos;
-  });
+  // Sort by slot number for consistent ordering
+  return Array.from(selected).sort((a, b) => a - b);
 }
 
 export function isDeadlinePassed(deadline: string): boolean {

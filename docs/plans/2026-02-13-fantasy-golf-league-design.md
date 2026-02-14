@@ -2,7 +2,13 @@
 
 ## Overview
 
-A web application for managing a 13-team fantasy golf league. Team owners draft 10 PGA Tour golfers, select 4 each tournament to earn FedEx Cup points, and compete for the best season total. Each rostered player must be used 2-8 times throughout the season.
+A web application for managing a 13-team fantasy golf league. Team owners draft 10 PGA Tour golfers, select 4 each tournament to earn FedEx Cup points, and compete for the best season total.
+
+**Key Rule: Slot-Based Usage Tracking**
+- Each team has 10 slots (based on draft order)
+- Usage limits (2-8 times) apply to slots, not golfers
+- When a golfer is swapped via waivers, the new golfer inherits the slot
+- If you re-acquire a golfer you previously had this season, they must return to their original slot
 
 ## Architecture
 
@@ -37,9 +43,13 @@ A web application for managing a 13-team fantasy golf league. Team owners draft 
 | 101 | Scottie Scheffler |
 
 ### Sheet 3: Rosters
-| team_id | golfer_id | draft_position | times_used |
-|---------|-----------|----------------|------------|
-| 1 | 101 | 1 | 3 |
+| team_id | slot | golfer_id | times_used |
+|---------|------|-----------|------------|
+| 1 | 1 | 101 | 3 |
+
+- `slot` is fixed (1-10 per team, from draft order)
+- `golfer_id` can change via waivers
+- `times_used` tracks the slot usage, not the golfer
 
 ### Sheet 4: Tournaments
 | tournament_id | name | deadline | status |
@@ -47,11 +57,11 @@ A web application for managing a 13-team fantasy golf league. Team owners draft 
 | T001 | Genesis Invitational | 2025-02-12 23:59 | locked |
 
 ### Sheet 5: Lineups
-| tournament_id | team_id | golfer_id | fedex_points |
-|---------------|---------|-----------|--------------|
-| T001 | 1 | 101 | 550 |
+| tournament_id | team_id | slot | fedex_points |
+|---------------|---------|------|--------------|
+| T001 | 1 | 1 | 550 |
 
-(4 rows per team per tournament)
+(4 rows per team per tournament — references slots, not golfers directly)
 
 ### Sheet 6: Standings
 | team_id | total_points |
@@ -59,11 +69,18 @@ A web application for managing a 13-team fantasy golf league. Team owners draft 
 | 1 | 4250 |
 
 ### Sheet 7: WaiverLog
-| timestamp | team_id | dropped_golfer | added_golfer |
-|-----------|---------|----------------|--------------|
-| 2025-02-15 14:32 | 1 | Rory McIlroy | Collin Morikawa |
+| timestamp | team_id | dropped_golfer | added_golfer | slot |
+|-----------|---------|----------------|--------------|------|
+| 2025-02-15 14:32 | 1 | Rory McIlroy | Collin Morikawa | 3 |
 
-### Sheet 8: Config
+### Sheet 8: SlotHistory
+| team_id | golfer_id | original_slot |
+|---------|-----------|---------------|
+| 1 | 105 | 3 |
+
+Tracks which slot a golfer was in when dropped (current season only). Used to enforce re-acquisition rule: if you pick up a golfer you previously had, they must return to their original slot.
+
+### Sheet 9: Config
 | key | value |
 |-----|-------|
 | commissioner_emails | admin1@example.com,admin2@example.com |
@@ -77,15 +94,15 @@ A web application for managing a 13-team fantasy golf league. Team owners draft 
 
 ## Lineup Rules
 
-- Each team has 10 rostered golfers
-- Select 4 per tournament
-- Each player must be used 2-8 times per season
+- Each team has 10 slots (draft positions 1-10)
+- Select 4 slots per tournament (UI shows golfer names in those slots)
+- Each slot must be used 2-8 times per season
 - Fixed deadline (specific day/time each week)
 
 **Default Lineup Logic:**
-1. First tournament: Top 4 by draft position
-2. Subsequent tournaments: Previous week's 4 picks
-3. If player ineligible (8 uses): Substitute next eligible by draft position
+1. First tournament: Slots 1-4 (top 4 draft picks)
+2. Subsequent tournaments: Previous week's 4 slots
+3. If slot ineligible (8 uses): Substitute next eligible slot
 4. Auto-applied if owner misses deadline
 
 ## Waiver System
@@ -94,8 +111,14 @@ A web application for managing a 13-team fantasy golf league. Team owners draft 
 - Drop one rostered player, pick up any unrostered golfer
 - Available between tournaments (before next deadline)
 - Dropped player immediately available to others
-- Picked-up player starts with 0 times used
+- New golfer inherits the slot of the dropped golfer (keeps slot's times_used)
 - All moves logged in WaiverLog sheet
+
+**Re-acquisition Rule:**
+- When a golfer is dropped, record their slot in SlotHistory
+- If picking up a golfer previously on your team (this season), they MUST return to their original slot
+- This means you must drop whoever is currently in that slot
+- SlotHistory resets each season
 
 ## Pages
 
@@ -126,9 +149,10 @@ A web application for managing a 13-team fantasy golf league. Team owners draft 
 | `/api/admin/results` | POST | Enter FedEx points |
 
 **Server-side Validation:**
-- Can't use a player more than 8 times
+- Can't use a slot more than 8 times
 - Can't submit after deadline
 - Can't pick up golfer already rostered
+- Re-acquired golfers must return to original slot
 
 ## Admin/Commissioner Workflow
 
@@ -158,9 +182,10 @@ A web application for managing a 13-team fantasy golf league. Team owners draft 
 **Manual Testing Checklist:**
 - [ ] Login as team owner
 - [ ] Set lineup, verify save
-- [ ] Attempt to exceed 8 uses (blocked)
+- [ ] Attempt to exceed 8 slot uses (blocked)
 - [ ] Submit after deadline (blocked)
-- [ ] Waiver swap
+- [ ] Waiver swap (new golfer inherits slot)
+- [ ] Re-acquire previous golfer (must use original slot)
 - [ ] Commissioner enters results
 - [ ] Standings update correctly
 
@@ -169,8 +194,8 @@ A web application for managing a 13-team fantasy golf league. Team owners draft 
 
 ## Deployment
 
-1. Create Google Sheet with 8 tabs
+1. Create Google Sheet with 9 tabs (Teams, Golfers, Rosters, Tournaments, Lineups, Standings, WaiverLog, SlotHistory, Config)
 2. Create Google Cloud service account, share sheet with it
 3. Deploy Next.js to Vercel with credentials as env vars
 4. Configure Vercel cron for daily deadline checks
-5. Populate initial data (teams, drafted rosters, golfers)
+5. Populate initial data (teams, drafted rosters with slots, golfers)
