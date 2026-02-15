@@ -1,27 +1,526 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Outfit:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Luxury Golf Color Palette */
+  --masters-green: #006747;
+  --fairway-green: #0d8555;
+  --putting-green: #1a9f6a;
+  --cream: #faf8f5;
+  --cream-dark: #f0ede8;
+  --gold: #c9a227;
+  --gold-light: #dbb94a;
+  --bronze: #8b6914;
+  --charcoal: #1a1a1a;
+  --charcoal-light: #2d2d2d;
+  --sand: #e8dcc8;
+  --rough: #4a5d3a;
+
+  /* Semantic Colors */
+  --background: var(--cream);
+  --foreground: var(--charcoal);
+  --primary: var(--masters-green);
+  --primary-hover: var(--fairway-green);
+  --accent: var(--gold);
+  --accent-hover: var(--gold-light);
+  --card-bg: #ffffff;
+  --card-border: rgba(0, 103, 71, 0.1);
+  --success: #1a9f6a;
+  --error: #c43c3c;
+  --muted: #6b7280;
+
+  /* Typography */
+  --font-display: 'Cormorant Garamond', Georgia, serif;
+  --font-body: 'Outfit', system-ui, sans-serif;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 103, 71, 0.04);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.04), 0 2px 4px rgba(0, 103, 71, 0.06);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.05), 0 4px 6px rgba(0, 103, 71, 0.08);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.06), 0 10px 10px rgba(0, 103, 71, 0.04);
+
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 400ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Dark mode - elegant dark clubhouse */
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #0f1410;
+    --foreground: #f0ede8;
+    --card-bg: #1a201c;
+    --card-border: rgba(201, 162, 39, 0.15);
+    --cream: #1a201c;
+    --cream-dark: #242b26;
   }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-body);
+  font-weight: 400;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Background Pattern - Subtle Fairway Stripes */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 80px,
+      rgba(0, 103, 71, 0.015) 80px,
+      rgba(0, 103, 71, 0.015) 160px
+    );
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  color: var(--charcoal);
+}
+
+h1 { font-size: 2.5rem; }
+h2 { font-size: 1.875rem; }
+h3 { font-size: 1.5rem; }
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--cream-dark);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--masters-green);
+  border-radius: 4px;
+  opacity: 0.6;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--fairway-green);
+}
+
+/* Selection */
+::selection {
+  background: rgba(0, 103, 71, 0.2);
+  color: var(--charcoal);
+}
+
+/* Focus States */
+*:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+@layer components {
+  /* Card Component */
+  .card {
+    @apply rounded-xl p-6;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    box-shadow: var(--shadow-md);
+    transition: box-shadow var(--transition-base), transform var(--transition-base);
+  }
+
+  .card:hover {
+    box-shadow: var(--shadow-lg);
+  }
+
+  .card-elevated {
+    box-shadow: var(--shadow-xl);
+  }
+
+  /* Button Components */
+  .btn {
+    @apply inline-flex items-center justify-center px-6 py-3 rounded-lg font-medium;
+    font-family: var(--font-body);
+    font-weight: 500;
+    transition: all var(--transition-fast);
+    cursor: pointer;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--masters-green), var(--fairway-green));
+    color: white;
+    box-shadow: 0 2px 4px rgba(0, 103, 71, 0.3);
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background: linear-gradient(135deg, var(--fairway-green), var(--putting-green));
+    box-shadow: 0 4px 8px rgba(0, 103, 71, 0.4);
+    transform: translateY(-1px);
+  }
+
+  .btn-primary:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgba(0, 103, 71, 0.3);
+  }
+
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .btn-secondary {
+    background: var(--cream-dark);
+    color: var(--charcoal);
+    border: 1px solid var(--card-border);
+  }
+
+  .btn-secondary:hover:not(:disabled) {
+    background: var(--sand);
+    border-color: var(--gold);
+  }
+
+  .btn-gold {
+    background: linear-gradient(135deg, var(--gold), var(--gold-light));
+    color: var(--charcoal);
+    font-weight: 600;
+  }
+
+  .btn-gold:hover:not(:disabled) {
+    box-shadow: 0 4px 12px rgba(201, 162, 39, 0.4);
+    transform: translateY(-1px);
+  }
+
+  /* Input Components */
+  .input {
+    @apply w-full px-4 py-3 rounded-lg;
+    background: white;
+    border: 2px solid var(--cream-dark);
+    font-family: var(--font-body);
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  }
+
+  .input:focus {
+    border-color: var(--masters-green);
+    box-shadow: 0 0 0 3px rgba(0, 103, 71, 0.1);
+    outline: none;
+  }
+
+  .input::placeholder {
+    color: var(--muted);
+  }
+
+  /* Header Component */
+  .header {
+    background: linear-gradient(135deg, var(--masters-green) 0%, var(--fairway-green) 100%);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    pointer-events: none;
+  }
+
+  .header-content {
+    @apply relative z-10 max-w-5xl mx-auto px-6 py-5 flex justify-between items-center;
+  }
+
+  .header-title {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.5rem;
+    color: white;
+    letter-spacing: 0.02em;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  }
+
+  .header-title::before {
+    content: '⛳';
+    margin-right: 0.5rem;
+    opacity: 0.9;
+  }
+
+  /* Golfer Card */
+  .golfer-card {
+    @apply p-4 rounded-lg cursor-pointer flex justify-between items-center;
+    background: white;
+    border: 2px solid var(--cream-dark);
+    transition: all var(--transition-fast);
+  }
+
+  .golfer-card:hover:not(.golfer-card-disabled) {
+    border-color: var(--fairway-green);
+    background: linear-gradient(to right, rgba(0, 103, 71, 0.03), transparent);
+    transform: translateX(4px);
+  }
+
+  .golfer-card-selected {
+    background: linear-gradient(135deg, rgba(0, 103, 71, 0.08), rgba(26, 159, 106, 0.05));
+    border-color: var(--masters-green);
+    box-shadow: inset 0 0 0 1px var(--masters-green);
+  }
+
+  .golfer-card-selected::before {
+    content: '✓';
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    background: var(--masters-green);
+    color: white;
+    border-radius: 50%;
+    font-size: 14px;
+    font-weight: bold;
+    margin-right: 12px;
+    flex-shrink: 0;
+  }
+
+  .golfer-card-disabled {
+    background: var(--cream-dark);
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  /* Standings Table */
+  .standings-table {
+    @apply w-full;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  .standings-table th {
+    @apply py-3 px-4 text-left text-sm font-semibold uppercase tracking-wider;
+    color: var(--muted);
+    border-bottom: 2px solid var(--cream-dark);
+    font-family: var(--font-body);
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+  }
+
+  .standings-table td {
+    @apply py-4 px-4;
+    border-bottom: 1px solid var(--cream-dark);
+    transition: background var(--transition-fast);
+  }
+
+  .standings-table tbody tr:hover {
+    background: rgba(0, 103, 71, 0.03);
+  }
+
+  .standings-table .rank-1 td:first-child::before {
+    content: '🏆';
+    margin-right: 8px;
+  }
+
+  .standings-table .rank-2 td:first-child::before {
+    content: '🥈';
+    margin-right: 8px;
+  }
+
+  .standings-table .rank-3 td:first-child::before {
+    content: '🥉';
+    margin-right: 8px;
+  }
+
+  .standings-table .my-team {
+    background: linear-gradient(90deg, rgba(201, 162, 39, 0.1), transparent);
+    position: relative;
+  }
+
+  .standings-table .my-team::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--gold);
+  }
+
+  /* Badge */
+  .badge {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium;
+  }
+
+  .badge-open {
+    background: rgba(26, 159, 106, 0.15);
+    color: var(--success);
+  }
+
+  .badge-locked {
+    background: rgba(196, 60, 60, 0.15);
+    color: var(--error);
+  }
+
+  .badge-gold {
+    background: rgba(201, 162, 39, 0.15);
+    color: var(--bronze);
+  }
+
+  /* Points Display */
+  .points-display {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.25rem;
+    color: var(--masters-green);
+  }
+
+  .points-display-large {
+    font-size: 2rem;
+  }
+
+  /* Slot Counter */
+  .slot-counter {
+    @apply text-sm px-2 py-1 rounded;
+    background: var(--cream-dark);
+    color: var(--muted);
+    font-family: var(--font-body);
+    font-weight: 500;
+  }
+
+  .slot-counter-warning {
+    background: rgba(201, 162, 39, 0.2);
+    color: var(--bronze);
+  }
+
+  .slot-counter-danger {
+    background: rgba(196, 60, 60, 0.2);
+    color: var(--error);
+  }
+
+  /* Divider with Golf Ball */
+  .divider-golf {
+    @apply flex items-center my-8;
+  }
+
+  .divider-golf::before,
+  .divider-golf::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--cream-dark), transparent);
+  }
+
+  .divider-golf::before {
+    margin-right: 1rem;
+  }
+
+  .divider-golf::after {
+    margin-left: 1rem;
+  }
+
+  /* Tournament Card */
+  .tournament-card {
+    @apply card relative overflow-hidden;
+  }
+
+  .tournament-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--masters-green), var(--gold));
+  }
+
+  /* Loading State */
+  .loading-pulse {
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+  }
+
+  /* Page Transitions */
+  .page-enter {
+    animation: fadeSlideIn 0.4s ease-out;
+  }
+
+  @keyframes fadeSlideIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Staggered list animation */
+  .stagger-item {
+    animation: staggerIn 0.4s ease-out backwards;
+  }
+
+  @keyframes staggerIn {
+    from {
+      opacity: 0;
+      transform: translateX(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+
+  .text-gradient-gold {
+    background: linear-gradient(135deg, var(--gold), var(--gold-light));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .text-gradient-green {
+    background: linear-gradient(135deg, var(--masters-green), var(--putting-green));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .glass {
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
   }
 }

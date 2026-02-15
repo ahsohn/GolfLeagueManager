@@ -81,73 +81,148 @@ export default function ResultsPage() {
     });
     setSaving(false);
     setSuccess('Results saved!');
+    setTimeout(() => setSuccess(''), 3000);
   };
 
+  // Group results by team
+  const resultsByTeam = results.reduce((acc, r) => {
+    if (!acc[r.team_name]) {
+      acc[r.team_name] = [];
+    }
+    acc[r.team_name].push(r);
+    return acc;
+  }, {} as Record<string, LineupResult[]>);
+
   if (isLoading || !isCommissioner) {
-    return <div className="p-8">Loading...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-cream">
+        <div className="text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-masters-green to-masters-fairway mb-4 animate-pulse">
+            <span className="text-3xl">⛳</span>
+          </div>
+          <p className="text-charcoal-light/60 font-medium">Loading...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <header className="bg-green-700 text-white p-4">
-        <div className="max-w-4xl mx-auto">
-          <Link href="/admin" className="text-xl font-bold">
-            Admin - Enter Results
+    <div className="min-h-screen bg-cream">
+      {/* Header */}
+      <header className="header">
+        <div className="header-content">
+          <Link href="/admin" className="header-title hover:opacity-80 transition-opacity">
+            Fantasy Golf League
           </Link>
+          <span className="badge badge-gold">Commissioner</span>
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto p-4">
-        <h2 className="text-xl font-semibold mb-4">
-          {tournamentName || 'Loading...'}
-        </h2>
+      <main className="max-w-5xl mx-auto px-6 py-8 animate-fade-in">
+        {/* Page Header */}
+        <div className="mb-8">
+          <Link
+            href="/admin"
+            className="inline-flex items-center text-sm text-masters-green hover:text-masters-fairway mb-4 transition-colors"
+          >
+            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Back to Admin
+          </Link>
 
-        <div className="bg-white rounded-lg shadow p-4 mb-4">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b">
-                <th className="text-left py-2">Team</th>
-                <th className="text-left py-2">Golfer</th>
-                <th className="text-right py-2">FedEx Points</th>
-              </tr>
-            </thead>
-            <tbody>
-              {results.map((r) => (
-                <tr key={`${r.team_id}-${r.slot}`} className="border-b">
-                  <td className="py-2">{r.team_name}</td>
-                  <td className="py-2">{r.golfer_name}</td>
-                  <td className="py-2 text-right">
-                    <input
-                      type="number"
-                      value={r.fedex_points}
-                      onChange={(e) =>
-                        updatePoints(r.team_id, r.slot, parseInt(e.target.value) || 0)
-                      }
-                      className="w-24 p-1 border rounded text-right"
-                    />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="flex items-start justify-between">
+            <div>
+              <h2 className="font-display text-2xl font-bold text-charcoal mb-1">
+                Enter Results
+              </h2>
+              <p className="text-lg text-charcoal-light/70">
+                {tournamentName || 'Loading...'}
+              </p>
+            </div>
+            {success && (
+              <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-green-50 border border-green-200">
+                <span className="text-green-500">✓</span>
+                <span className="text-green-600 font-medium">{success}</span>
+              </div>
+            )}
+          </div>
         </div>
 
-        {success && <p className="text-green-600 mb-4">{success}</p>}
+        {/* Results by Team */}
+        <div className="space-y-6 mb-8">
+          {Object.entries(resultsByTeam).map(([teamName, teamResults], teamIndex) => (
+            <div
+              key={teamName}
+              className="card"
+              style={{ animationDelay: `${teamIndex * 50}ms` }}
+            >
+              <h3 className="font-display text-lg font-semibold text-charcoal mb-4 pb-3 border-b border-cream-dark">
+                {teamName}
+              </h3>
+              <div className="space-y-3">
+                {teamResults.map((r) => (
+                  <div
+                    key={`${r.team_id}-${r.slot}`}
+                    className="flex items-center justify-between p-3 rounded-lg bg-cream/50 hover:bg-cream transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="w-8 h-8 rounded-full bg-masters-green/10 text-masters-green text-sm font-semibold flex items-center justify-center">
+                        {teamResults.indexOf(r) + 1}
+                      </span>
+                      <span className="font-medium text-charcoal">{r.golfer_name}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        value={r.fedex_points}
+                        onChange={(e) =>
+                          updatePoints(r.team_id, r.slot, parseInt(e.target.value) || 0)
+                        }
+                        className="w-24 px-3 py-2 rounded-lg border-2 border-cream-dark text-right font-semibold text-masters-green focus:border-masters-green focus:outline-none transition-colors"
+                      />
+                      <span className="text-sm text-charcoal-light/50">pts</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
 
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="w-full bg-green-600 text-white py-3 rounded-lg font-medium hover:bg-green-700 disabled:opacity-50"
-        >
-          {saving ? 'Saving...' : 'Save Results'}
-        </button>
+        {/* Empty state */}
+        {results.length === 0 && (
+          <div className="card text-center py-12">
+            <span className="text-6xl opacity-20 mb-4 block">📋</span>
+            <p className="text-charcoal-light/50 text-lg">No lineups to enter results for</p>
+          </div>
+        )}
 
-        <Link
-          href="/admin"
-          className="block text-center mt-4 text-gray-600 hover:underline"
-        >
-          Back to Admin
-        </Link>
+        {/* Save Button */}
+        {results.length > 0 && (
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="btn btn-primary w-full py-4 text-lg"
+          >
+            {saving ? (
+              <span className="flex items-center gap-2">
+                <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                Saving...
+              </span>
+            ) : (
+              <>
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Save Results
+              </>
+            )}
+          </button>
+        )}
       </main>
     </div>
   );

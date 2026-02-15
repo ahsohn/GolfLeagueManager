@@ -38,7 +38,6 @@ function LineupContent() {
 
   useEffect(() => {
     if (team) {
-      // Get current tournament if not specified
       const fetchData = async () => {
         let tid = tournamentId;
         if (!tid) {
@@ -57,7 +56,6 @@ function LineupContent() {
           setRoster(data.roster);
           setIsLocked(data.isLocked);
 
-          // Set initial selection
           if (data.currentLineup.length > 0) {
             setSelected(data.currentLineup.map((l: { slot: number }) => l.slot));
           } else {
@@ -116,83 +114,186 @@ function LineupContent() {
     setSaving(false);
   };
 
+  const getSlotCounterClass = (timesUsed: number) => {
+    if (timesUsed >= 7) return 'slot-counter slot-counter-danger';
+    if (timesUsed >= 5) return 'slot-counter slot-counter-warning';
+    return 'slot-counter';
+  };
+
   if (isLoading || !team) {
-    return <div className="p-8">Loading...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-cream">
+        <div className="text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-masters-green to-masters-fairway mb-4 animate-pulse">
+            <span className="text-3xl">⛳</span>
+          </div>
+          <p className="text-charcoal-light/60 font-medium">Loading...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <header className="bg-green-700 text-white p-4">
-        <div className="max-w-4xl mx-auto flex justify-between items-center">
-          <Link href="/" className="text-xl font-bold">
+    <div className="min-h-screen bg-cream">
+      {/* Header */}
+      <header className="header">
+        <div className="header-content">
+          <Link href="/" className="header-title hover:opacity-80 transition-opacity">
             Fantasy Golf League
           </Link>
-          <span>{team.team_name}</span>
+          <span className="text-white/90 font-medium">{team.team_name}</span>
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto p-4">
+      <main className="max-w-3xl mx-auto px-6 py-8 animate-fade-in">
         {tournament && (
           <>
-            <h2 className="text-xl font-semibold mb-2">{tournament.name}</h2>
-            <p className="text-sm text-gray-600 mb-4">
-              Deadline: {new Date(tournament.deadline).toLocaleString()}
-              {isLocked && (
-                <span className="ml-2 text-red-600 font-medium">LOCKED</span>
-              )}
-            </p>
+            {/* Tournament Header */}
+            <div className="mb-8">
+              <Link
+                href="/"
+                className="inline-flex items-center text-sm text-masters-green hover:text-masters-fairway mb-4 transition-colors"
+              >
+                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                Back to Standings
+              </Link>
+
+              <div className="flex items-start justify-between">
+                <div>
+                  <h2 className="font-display text-2xl font-bold text-charcoal mb-2">
+                    {tournament.name}
+                  </h2>
+                  <div className="flex items-center gap-2 text-charcoal-light/70">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>Deadline: {new Date(tournament.deadline).toLocaleString()}</span>
+                  </div>
+                </div>
+                {isLocked && (
+                  <span className="badge badge-locked">
+                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                    Locked
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Selection Counter */}
+            <div className="card mb-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-display text-lg font-semibold text-charcoal">
+                    Select Your Lineup
+                  </h3>
+                  <p className="text-sm text-charcoal-light/60">
+                    Choose 4 golfers from your roster
+                  </p>
+                </div>
+                <div className="text-right">
+                  <div className="flex items-center gap-1">
+                    {[1, 2, 3, 4].map((n) => (
+                      <div
+                        key={n}
+                        className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${
+                          selected.length >= n
+                            ? 'bg-masters-green text-white'
+                            : 'bg-cream-dark text-charcoal-light/40'
+                        }`}
+                      >
+                        {n}
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-sm text-charcoal-light/60 mt-1">
+                    {selected.length}/4 selected
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Golfer List */}
+            <div className="space-y-3 mb-6">
+              {roster.map((player, index) => (
+                <div
+                  key={player.slot}
+                  onClick={() => togglePlayer(player.slot)}
+                  className={`
+                    golfer-card
+                    ${selected.includes(player.slot) ? 'golfer-card-selected' : ''}
+                    ${!player.canSelect ? 'golfer-card-disabled' : ''}
+                  `}
+                  style={{ animationDelay: `${index * 30}ms` }}
+                >
+                  <div className="flex items-center gap-3">
+                    {selected.includes(player.slot) && (
+                      <div className="w-6 h-6 rounded-full bg-masters-green text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
+                        ✓
+                      </div>
+                    )}
+                    <div>
+                      <span className="font-medium text-charcoal">
+                        {player.golfer_name}
+                      </span>
+                      {!player.canSelect && (
+                        <span className="ml-2 text-sm text-charcoal-light/50">
+                          (max uses reached)
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <span className={getSlotCounterClass(player.times_used)}>
+                    {player.times_used}/8 uses
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {/* Messages */}
+            {error && (
+              <div className="flex items-center gap-2 p-4 rounded-lg bg-red-50 border border-red-200 mb-4">
+                <span className="text-red-500 text-xl">⚠</span>
+                <p className="text-red-600">{error}</p>
+              </div>
+            )}
+            {success && (
+              <div className="flex items-center gap-2 p-4 rounded-lg bg-green-50 border border-green-200 mb-4">
+                <span className="text-green-500 text-xl">✓</span>
+                <p className="text-green-600">{success}</p>
+              </div>
+            )}
+
+            {/* Submit Button */}
+            {!isLocked && (
+              <button
+                onClick={handleSubmit}
+                disabled={saving || selected.length !== 4}
+                className="btn btn-primary w-full py-4 text-lg"
+              >
+                {saving ? (
+                  <span className="flex items-center gap-2">
+                    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    Saving...
+                  </span>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Submit Lineup
+                  </>
+                )}
+              </button>
+            )}
           </>
         )}
-
-        <div className="bg-white rounded-lg shadow p-4 mb-4">
-          <h3 className="font-medium mb-2">
-            Select 4 Golfers ({selected.length}/4)
-          </h3>
-
-          <div className="space-y-2">
-            {roster.map((player) => (
-              <div
-                key={player.slot}
-                onClick={() => togglePlayer(player.slot)}
-                className={`p-3 rounded border cursor-pointer flex justify-between ${
-                  selected.includes(player.slot)
-                    ? 'bg-green-100 border-green-500'
-                    : player.canSelect
-                    ? 'hover:bg-gray-50'
-                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                }`}
-              >
-                <span>
-                  {player.golfer_name}
-                  {!player.canSelect && ' (max uses reached)'}
-                </span>
-                <span className="text-sm text-gray-500">
-                  {player.times_used}/8 uses
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {error && <p className="text-red-500 mb-4">{error}</p>}
-        {success && <p className="text-green-600 mb-4">{success}</p>}
-
-        {!isLocked && (
-          <button
-            onClick={handleSubmit}
-            disabled={saving || selected.length !== 4}
-            className="w-full bg-green-600 text-white py-3 rounded-lg font-medium hover:bg-green-700 disabled:opacity-50"
-          >
-            {saving ? 'Saving...' : 'Submit Lineup'}
-          </button>
-        )}
-
-        <Link
-          href="/"
-          className="block text-center mt-4 text-gray-600 hover:underline"
-        >
-          Back to Standings
-        </Link>
       </main>
     </div>
   );
@@ -200,7 +301,18 @@ function LineupContent() {
 
 export default function LineupPage() {
   return (
-    <Suspense fallback={<div className="p-8">Loading...</div>}>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-cream">
+          <div className="text-center">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-masters-green to-masters-fairway mb-4 animate-pulse">
+              <span className="text-3xl">⛳</span>
+            </div>
+            <p className="text-charcoal-light/60 font-medium">Loading...</p>
+          </div>
+        </div>
+      }
+    >
       <LineupContent />
     </Suspense>
   );
