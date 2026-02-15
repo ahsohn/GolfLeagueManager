@@ -1,4 +1,4 @@
-import { getSheetsClient, SHEET_NAMES } from '../sheets';
+import { SHEET_NAMES } from '../sheets';
 
 describe('sheets', () => {
   it('exports correct sheet names', () => {
