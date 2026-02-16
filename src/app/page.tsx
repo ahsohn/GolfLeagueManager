@@ -67,7 +67,7 @@ export default function HomePage() {
               <span className="text-white/90 font-medium">{team.team_name}</span>
               <button
                 onClick={logout}
-                className="text-white/60 hover:text-white hover:bg-white/10 px-3 py-1 rounded-full text-sm transition-colors"
+                className="text-white/90 hover:text-white hover:bg-white/10 px-3 py-1 rounded-full text-sm transition-colors"
               >
                 Sign Out
               </button>
