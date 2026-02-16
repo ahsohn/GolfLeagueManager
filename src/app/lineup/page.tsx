@@ -29,6 +29,7 @@ function LineupContent() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [showWarning, setShowWarning] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !team) {
@@ -84,14 +85,21 @@ function LineupContent() {
     }
   };
 
-  const handleSubmit = async () => {
-    if (selected.length !== 4) {
-      setError('You must select exactly 4 golfers');
+  const handleSubmit = async (confirmed = false) => {
+    if (selected.length === 0) {
+      setError('You must select at least 1 golfer');
+      return;
+    }
+
+    // Show warning if fewer than 4 and not confirmed
+    if (selected.length < 4 && !confirmed) {
+      setShowWarning(true);
       return;
     }
 
     setSaving(true);
     setError('');
+    setShowWarning(false);
 
     const res = await fetch('/api/lineup', {
       method: 'POST',
@@ -253,6 +261,37 @@ function LineupContent() {
               ))}
             </div>
 
+            {/* Warning for fewer than 4 golfers */}
+            {showWarning && (
+              <div className="p-4 rounded-lg bg-amber-50 border border-amber-200 mb-4">
+                <div className="flex items-start gap-3">
+                  <span className="text-amber-500 text-xl">⚠</span>
+                  <div className="flex-1">
+                    <p className="text-amber-800 font-medium mb-2">
+                      You have only selected {selected.length} golfer{selected.length === 1 ? '' : 's'}
+                    </p>
+                    <p className="text-amber-700 text-sm mb-4">
+                      You can select up to 4 golfers. Are you sure you want to submit with fewer?
+                    </p>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => handleSubmit(true)}
+                        className="btn btn-primary py-2 px-4 text-sm"
+                      >
+                        Yes, Submit Anyway
+                      </button>
+                      <button
+                        onClick={() => setShowWarning(false)}
+                        className="btn btn-secondary py-2 px-4 text-sm"
+                      >
+                        Go Back
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Messages */}
             {error && (
               <div className="flex items-center gap-2 p-4 rounded-lg bg-red-50 border border-red-200 mb-4">
@@ -268,10 +307,10 @@ function LineupContent() {
             )}
 
             {/* Submit Button */}
-            {!isLocked && (
+            {!isLocked && !showWarning && (
               <button
-                onClick={handleSubmit}
-                disabled={saving || selected.length !== 4}
+                onClick={() => handleSubmit()}
+                disabled={saving || selected.length === 0}
                 className="btn btn-primary w-full py-4 text-lg"
               >
                 {saving ? (

@@ -10,15 +10,21 @@ export function canUseSlot(rosterEntry: RosterEntry): boolean {
 export interface ValidationResult {
   valid: boolean;
   error?: string;
+  warning?: string;
 }
 
 export function validateLineupSelection(
   slots: number[],
   roster: RosterEntry[]
 ): ValidationResult {
-  // Check exactly 4 slots
-  if (slots.length !== LINEUP_SIZE) {
-    return { valid: false, error: `Must select exactly ${LINEUP_SIZE} slots` };
+  // Check at least 1 slot selected
+  if (slots.length === 0) {
+    return { valid: false, error: 'Must select at least 1 golfer' };
+  }
+
+  // Check not more than 4 slots
+  if (slots.length > LINEUP_SIZE) {
+    return { valid: false, error: `Cannot select more than ${LINEUP_SIZE} golfers` };
   }
 
   // Check for duplicates
@@ -41,6 +47,14 @@ export function validateLineupSelection(
         error: `Slot ${slot} has already been used ${MAX_USES} times`,
       };
     }
+  }
+
+  // Add warning if fewer than 4 selected
+  if (slots.length < LINEUP_SIZE) {
+    return {
+      valid: true,
+      warning: `You have only selected ${slots.length} golfer${slots.length === 1 ? '' : 's'}. You can select up to ${LINEUP_SIZE}.`
+    };
   }
 
   return { valid: true };
