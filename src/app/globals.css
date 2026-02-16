@@ -48,17 +48,8 @@
   --transition-slow: 400ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Dark mode - elegant dark clubhouse */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0f1410;
-    --foreground: #f0ede8;
-    --card-bg: #1a201c;
-    --card-border: rgba(201, 162, 39, 0.15);
-    --cream: #1a201c;
-    --cream-dark: #242b26;
-  }
-}
+/* Dark mode disabled - site designed for light mode only */
+/* To re-enable dark mode, text colors would need to be updated to light variants */
 
 * {
   box-sizing: border-box;
