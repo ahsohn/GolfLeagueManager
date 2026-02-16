@@ -46,7 +46,7 @@ export default function HomePage() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-masters-green to-masters-fairway mb-4 animate-pulse">
             <span className="text-3xl">⛳</span>
           </div>
-          <p className="text-charcoal-light/60 font-medium">Loading...</p>
+          <p className="text-charcoal-light font-medium">Loading...</p>
         </div>
       </div>
     );
@@ -82,7 +82,7 @@ export default function HomePage() {
           <div className="tournament-card mb-8">
             <div className="flex items-start justify-between mb-4">
               <div>
-                <span className="text-xs font-semibold uppercase tracking-wider text-masters-green/70 mb-1 block">
+                <span className="text-xs font-semibold uppercase tracking-wider text-masters-green mb-1 block">
                   Current Tournament
                 </span>
                 <h2 className="font-display text-2xl font-bold text-charcoal">
@@ -94,7 +94,7 @@ export default function HomePage() {
               </span>
             </div>
 
-            <div className="flex items-center gap-2 text-charcoal-light/70 mb-6">
+            <div className="flex items-center gap-2 text-charcoal-light mb-6">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
@@ -126,7 +126,7 @@ export default function HomePage() {
               <span className="text-gold">🏆</span>
               League Standings
             </h2>
-            <span className="text-sm text-charcoal-light/50">
+            <span className="text-sm text-charcoal-light">
               {standings.length} Teams
             </span>
           </div>
@@ -206,7 +206,7 @@ export default function HomePage() {
       {/* Footer */}
       <footer className="border-t border-cream-dark mt-12 py-6">
         <div className="max-w-5xl mx-auto px-6 text-center">
-          <p className="text-sm text-charcoal-light/40">
+          <p className="text-sm text-charcoal-light">
             Fantasy Golf League &middot; FedEx Cup Points Tracker
           </p>
         </div>

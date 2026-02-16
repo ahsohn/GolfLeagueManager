@@ -60,7 +60,7 @@ export default function AdminPage() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-masters-green to-masters-fairway mb-4 animate-pulse">
             <span className="text-3xl">⛳</span>
           </div>
-          <p className="text-charcoal-light/60 font-medium">Loading...</p>
+          <p className="text-charcoal-light font-medium">Loading...</p>
         </div>
       </div>
     );
@@ -102,7 +102,7 @@ export default function AdminPage() {
               <h2 className="font-display text-2xl font-bold text-charcoal">
                 Admin Panel
               </h2>
-              <p className="text-sm text-charcoal-light/60">
+              <p className="text-sm text-charcoal-light">
                 Manage tournaments and results
               </p>
             </div>
@@ -198,7 +198,7 @@ export default function AdminPage() {
                   </div>
                   <div>
                     <span className="font-medium text-charcoal block">{t.name}</span>
-                    <span className="text-sm text-charcoal-light/50">
+                    <span className="text-sm text-charcoal-light">
                       {new Date(t.deadline).toLocaleDateString()}
                     </span>
                   </div>
@@ -234,7 +234,7 @@ export default function AdminPage() {
             {tournaments.length === 0 && (
               <div className="text-center py-8">
                 <span className="text-4xl opacity-20 mb-2 block">🏆</span>
-                <p className="text-charcoal-light/50">No tournaments created yet</p>
+                <p className="text-charcoal-light">No tournaments created yet</p>
               </div>
             )}
           </div>

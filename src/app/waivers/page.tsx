@@ -93,7 +93,7 @@ export default function WaiversPage() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-masters-green to-masters-fairway mb-4 animate-pulse">
             <span className="text-3xl">⛳</span>
           </div>
-          <p className="text-charcoal-light/60 font-medium">Loading...</p>
+          <p className="text-charcoal-light font-medium">Loading...</p>
         </div>
       </div>
     );
@@ -134,7 +134,7 @@ export default function WaiversPage() {
               <h2 className="font-display text-2xl font-bold text-charcoal">
                 Waivers
               </h2>
-              <p className="text-sm text-charcoal-light/60">
+              <p className="text-sm text-charcoal-light">
                 Swap a rostered golfer for an available one
               </p>
             </div>
@@ -147,16 +147,16 @@ export default function WaiversPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <div className="text-center">
-                  <p className="text-xs uppercase tracking-wider text-charcoal-light/50 mb-1">Dropping</p>
+                  <p className="text-xs uppercase tracking-wider text-charcoal-light mb-1">Dropping</p>
                   <p className="font-semibold text-red-600">
                     {dropSlot !== null ? roster.find(r => r.slot === dropSlot)?.golfer_name : '—'}
                   </p>
                 </div>
-                <svg className="w-6 h-6 text-charcoal-light/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-6 h-6 text-charcoal-light" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                 </svg>
                 <div className="text-center">
-                  <p className="text-xs uppercase tracking-wider text-charcoal-light/50 mb-1">Adding</p>
+                  <p className="text-xs uppercase tracking-wider text-charcoal-light mb-1">Adding</p>
                   <p className="font-semibold text-masters-green">
                     {addId !== null ? available.find(g => g.golfer_id === addId)?.name : '—'}
                   </p>
@@ -175,7 +175,7 @@ export default function WaiversPage() {
                 <span className="text-red-400">↓</span>
                 Your Roster
               </h3>
-              <span className="text-sm text-charcoal-light/50">Select to drop</span>
+              <span className="text-sm text-charcoal-light">Select to drop</span>
             </div>
             <div className="space-y-2">
               {roster.map((r, index) => (
@@ -212,7 +212,7 @@ export default function WaiversPage() {
                 <span className="text-masters-green">↑</span>
                 Available
               </h3>
-              <span className="text-sm text-charcoal-light/50">Select to add</span>
+              <span className="text-sm text-charcoal-light">Select to add</span>
             </div>
             <div className="space-y-2 max-h-[480px] overflow-y-auto pr-2">
               {available.length > 0 ? (
@@ -235,7 +235,7 @@ export default function WaiversPage() {
               ) : (
                 <div className="text-center py-8">
                   <span className="text-4xl opacity-20 mb-2 block">🏌️</span>
-                  <p className="text-charcoal-light/50 italic">No available golfers</p>
+                  <p className="text-charcoal-light italic">No available golfers</p>
                 </div>
               )}
             </div>

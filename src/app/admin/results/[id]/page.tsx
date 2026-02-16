@@ -100,7 +100,7 @@ export default function ResultsPage() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-masters-green to-masters-fairway mb-4 animate-pulse">
             <span className="text-3xl">⛳</span>
           </div>
-          <p className="text-charcoal-light/60 font-medium">Loading...</p>
+          <p className="text-charcoal-light font-medium">Loading...</p>
         </div>
       </div>
     );
@@ -136,7 +136,7 @@ export default function ResultsPage() {
               <h2 className="font-display text-2xl font-bold text-charcoal mb-1">
                 Enter Results
               </h2>
-              <p className="text-lg text-charcoal-light/70">
+              <p className="text-lg text-charcoal-light">
                 {tournamentName || 'Loading...'}
               </p>
             </div>
@@ -181,7 +181,7 @@ export default function ResultsPage() {
                         }
                         className="w-24 px-3 py-2 rounded-lg border-2 border-cream-dark text-right font-semibold text-masters-green focus:border-masters-green focus:outline-none transition-colors"
                       />
-                      <span className="text-sm text-charcoal-light/50">pts</span>
+                      <span className="text-sm text-charcoal-light">pts</span>
                     </div>
                   </div>
                 ))}
@@ -194,7 +194,7 @@ export default function ResultsPage() {
         {results.length === 0 && (
           <div className="card text-center py-12">
             <span className="text-6xl opacity-20 mb-4 block">📋</span>
-            <p className="text-charcoal-light/50 text-lg">No lineups to enter results for</p>
+            <p className="text-charcoal-light text-lg">No lineups to enter results for</p>
           </div>
         )}
 

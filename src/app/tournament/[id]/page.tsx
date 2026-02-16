@@ -45,7 +45,7 @@ export default function TournamentPage() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-masters-green to-masters-fairway mb-4 animate-pulse">
             <span className="text-3xl">⛳</span>
           </div>
-          <p className="text-charcoal-light/60 font-medium">Loading...</p>
+          <p className="text-charcoal-light font-medium">Loading...</p>
         </div>
       </div>
     );
@@ -115,7 +115,7 @@ export default function TournamentPage() {
                     </h3>
                     <span className="points-display points-display-large">
                       {team.total_points}
-                      <span className="text-sm font-normal text-charcoal-light/50 ml-1">pts</span>
+                      <span className="text-sm font-normal text-charcoal-light ml-1">pts</span>
                     </span>
                   </div>
 
@@ -138,7 +138,7 @@ export default function TournamentPage() {
                           <span className={`font-semibold ${
                             l.fedex_points !== null && l.fedex_points > 0
                               ? 'text-masters-green'
-                              : 'text-charcoal-light/40'
+                              : 'text-charcoal-light'
                           }`}>
                             {l.fedex_points !== null ? `${l.fedex_points} pts` : '—'}
                           </span>
@@ -148,7 +148,7 @@ export default function TournamentPage() {
                   ) : (
                     <div className="text-center py-6">
                       <span className="text-4xl opacity-20 mb-2 block">🏌️</span>
-                      <p className="text-charcoal-light/50 italic">No lineup submitted</p>
+                      <p className="text-charcoal-light italic">No lineup submitted</p>
                     </div>
                   )}
                 </div>
@@ -159,7 +159,7 @@ export default function TournamentPage() {
             {lineups.length === 0 && (
               <div className="text-center py-12">
                 <span className="text-6xl opacity-20 mb-4 block">🏌️</span>
-                <p className="text-charcoal-light/50 text-lg">No lineups submitted yet</p>
+                <p className="text-charcoal-light text-lg">No lineups submitted yet</p>
               </div>
             )}
           </>

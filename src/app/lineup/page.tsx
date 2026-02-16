@@ -127,7 +127,7 @@ function LineupContent() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-masters-green to-masters-fairway mb-4 animate-pulse">
             <span className="text-3xl">⛳</span>
           </div>
-          <p className="text-charcoal-light/60 font-medium">Loading...</p>
+          <p className="text-charcoal-light font-medium">Loading...</p>
         </div>
       </div>
     );
@@ -165,7 +165,7 @@ function LineupContent() {
                   <h2 className="font-display text-2xl font-bold text-charcoal mb-2">
                     {tournament.name}
                   </h2>
-                  <div className="flex items-center gap-2 text-charcoal-light/70">
+                  <div className="flex items-center gap-2 text-charcoal-light">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
@@ -190,7 +190,7 @@ function LineupContent() {
                   <h3 className="font-display text-lg font-semibold text-charcoal">
                     Select Your Lineup
                   </h3>
-                  <p className="text-sm text-charcoal-light/60">
+                  <p className="text-sm text-charcoal-light">
                     Choose 4 golfers from your roster
                   </p>
                 </div>
@@ -202,14 +202,14 @@ function LineupContent() {
                         className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${
                           selected.length >= n
                             ? 'bg-masters-green text-white'
-                            : 'bg-cream-dark text-charcoal-light/40'
+                            : 'bg-cream-dark text-charcoal-light/80'
                         }`}
                       >
                         {n}
                       </div>
                     ))}
                   </div>
-                  <p className="text-sm text-charcoal-light/60 mt-1">
+                  <p className="text-sm text-charcoal-light mt-1">
                     {selected.length}/4 selected
                   </p>
                 </div>
@@ -240,7 +240,7 @@ function LineupContent() {
                         {player.golfer_name}
                       </span>
                       {!player.canSelect && (
-                        <span className="ml-2 text-sm text-charcoal-light/50">
+                        <span className="ml-2 text-sm text-charcoal-light">
                           (max uses reached)
                         </span>
                       )}
@@ -308,7 +308,7 @@ export default function LineupPage() {
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-masters-green to-masters-fairway mb-4 animate-pulse">
               <span className="text-3xl">⛳</span>
             </div>
-            <p className="text-charcoal-light/60 font-medium">Loading...</p>
+            <p className="text-charcoal-light font-medium">Loading...</p>
           </div>
         </div>
       }

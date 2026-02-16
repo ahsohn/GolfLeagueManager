@@ -57,7 +57,7 @@ export default function LoginPage() {
             <h1 className="font-display text-3xl font-bold text-charcoal mb-2">
               Fantasy Golf League
             </h1>
-            <p className="text-charcoal-light/60 text-sm">
+            <p className="text-charcoal-light text-sm">
               Enter the clubhouse
             </p>
           </div>
@@ -113,7 +113,7 @@ export default function LoginPage() {
 
           {/* Footer */}
           <div className="mt-8 text-center">
-            <p className="text-xs text-charcoal-light/50 uppercase tracking-wider">
+            <p className="text-xs text-charcoal-light uppercase tracking-wider">
               FedEx Cup Points Tracker
             </p>
           </div>
@@ -121,7 +121,7 @@ export default function LoginPage() {
 
         {/* Bottom decorative element */}
         <div className="text-center mt-6">
-          <span className="text-white/40 text-sm font-display italic">
+          <span className="text-cream/80 text-sm font-display italic">
             &ldquo;The most important shot in golf is the next one.&rdquo;
           </span>
         </div>
