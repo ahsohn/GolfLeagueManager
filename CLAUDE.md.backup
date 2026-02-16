@@ -1,0 +1,19 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+GolfLeagueManager - A golf league management application.
+
+## Development Setup
+
+*To be documented once the project structure is established.*
+
+## Build and Test Commands
+
+*To be documented once build tooling is configured.*
+
+## Architecture
+
+*To be documented as the codebase develops.*

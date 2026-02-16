@@ -13,6 +13,9 @@ import {
   canUseSlot,
 } from '@/lib/lineup-validator';
 
+// Disable caching to always fetch fresh data from Google Sheets
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);

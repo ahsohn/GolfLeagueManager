@@ -8,6 +8,9 @@ import {
   parseRosters,
 } from '@/lib/data';
 
+// Disable caching to always fetch fresh data from Google Sheets
+export const dynamic = 'force-dynamic';
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

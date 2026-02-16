@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { getSheetData, SHEET_NAMES } from '@/lib/sheets';
 import { parseGolfers, parseRosters } from '@/lib/data';
 
+// Disable caching to always fetch fresh data from Google Sheets
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const [golfersData, rostersData] = await Promise.all([

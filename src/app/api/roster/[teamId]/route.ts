@@ -3,6 +3,9 @@ import { getSheetData, SHEET_NAMES } from '@/lib/sheets';
 import { parseRosters, parseGolfers } from '@/lib/data';
 import { RosterWithGolfers } from '@/types';
 
+// Disable caching to always fetch fresh data from Google Sheets
+export const dynamic = 'force-dynamic';
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ teamId: string }> }
