@@ -121,7 +121,7 @@ export default function LoginPage() {
 
         {/* Bottom decorative element */}
         <div className="text-center mt-6">
-          <span className="text-cream/80 text-sm font-display italic">
+          <span className="text-white text-sm font-display italic">
             &ldquo;The most important shot in golf is the next one.&rdquo;
           </span>
         </div>

@@ -322,7 +322,7 @@ h3 { font-size: 1.5rem; }
 
   .standings-table th {
     @apply py-3 px-4 text-left text-sm font-semibold uppercase tracking-wider;
-    color: var(--charcoal-light);
+    color: var(--charcoal);
     border-bottom: 2px solid var(--cream-dark);
     font-family: var(--font-body);
     font-size: 0.75rem;
@@ -405,7 +405,7 @@ h3 { font-size: 1.5rem; }
   .slot-counter {
     @apply text-sm px-2 py-1 rounded;
     background: var(--cream-dark);
-    color: var(--charcoal-light);
+    color: var(--charcoal);
     font-family: var(--font-body);
     font-weight: 500;
   }
