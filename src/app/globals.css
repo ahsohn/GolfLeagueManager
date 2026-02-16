@@ -330,34 +330,32 @@ h3 { font-size: 1.5rem; }
     background: rgba(0, 103, 71, 0.03);
   }
 
+  .standings-table .rank-1 td:first-child::before,
+  .standings-table .rank-2 td:first-child::before,
+  .standings-table .rank-3 td:first-child::before {
+    display: inline;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+
   .standings-table .rank-1 td:first-child::before {
     content: '🏆';
-    margin-right: 8px;
   }
 
   .standings-table .rank-2 td:first-child::before {
     content: '🥈';
-    margin-right: 8px;
   }
 
   .standings-table .rank-3 td:first-child::before {
     content: '🥉';
-    margin-right: 8px;
   }
 
   .standings-table .my-team {
     background: linear-gradient(90deg, rgba(201, 162, 39, 0.1), transparent);
-    position: relative;
   }
 
-  .standings-table .my-team::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 3px;
-    background: var(--gold);
+  .standings-table .my-team td:first-child {
+    border-left: 3px solid var(--gold);
   }
 
   /* Badge */
