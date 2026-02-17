@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSheetData, appendSheetRow, SHEET_NAMES } from '@/lib/sheets';
-import {
-  parseRosters,
-  parseTournaments,
-  parseLineups,
-  parseGolfers,
-} from '@/lib/data';
+import { sql } from '@/lib/db';
+import { RosterEntry, LineupEntry, Tournament } from '@/types';
 import {
   validateLineupSelection,
   getDefaultLineup,
@@ -13,7 +8,6 @@ import {
   canUseSlot,
 } from '@/lib/lineup-validator';
 
-// Disable caching to always fetch fresh data from Google Sheets
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
@@ -29,64 +23,46 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const [rostersData, lineupsData, tournamentsData, golfersData] =
-      await Promise.all([
-        getSheetData(SHEET_NAMES.ROSTERS),
-        getSheetData(SHEET_NAMES.LINEUPS),
-        getSheetData(SHEET_NAMES.TOURNAMENTS),
-        getSheetData(SHEET_NAMES.GOLFERS),
-      ]);
+    const [tournamentRows, rosterRows, currentLineupRows] = await Promise.all([
+      sql`SELECT tournament_id, name, deadline, status FROM tournaments WHERE tournament_id = ${tournamentId}`,
+      sql`
+        SELECT r.team_id, r.slot, r.golfer_id, r.times_used, g.name AS golfer_name
+        FROM rosters r
+        JOIN golfers g ON g.golfer_id = r.golfer_id
+        WHERE r.team_id = ${teamId}
+        ORDER BY r.slot
+      `,
+      sql`SELECT slot FROM lineups WHERE team_id = ${teamId} AND tournament_id = ${tournamentId}`,
+    ]);
 
-    const rosters = parseRosters(rostersData);
-    const allLineups = parseLineups(lineupsData);
-    const tournaments = parseTournaments(tournamentsData);
-    const golfers = parseGolfers(golfersData);
-
-    const teamRoster = rosters.filter((r) => r.team_id === teamId);
-    const tournament = tournaments.find((t) => t.tournament_id === tournamentId);
-
-    if (!tournament) {
-      return NextResponse.json(
-        { error: 'Tournament not found' },
-        { status: 404 }
-      );
+    if (tournamentRows.length === 0) {
+      return NextResponse.json({ error: 'Tournament not found' }, { status: 404 });
     }
 
-    // Get current lineup for this tournament
-    const currentLineup = allLineups.filter(
-      (l) => l.team_id === teamId && l.tournament_id === tournamentId
-    );
+    const tournament = tournamentRows[0] as Tournament;
+    const teamRoster = rosterRows as (RosterEntry & { golfer_name: string })[];
+    const currentLineup = currentLineupRows as { slot: number }[];
 
-    // Get previous tournament lineup for defaults
-    const sortedTournaments = tournaments
-      .filter((t) => new Date(t.deadline) < new Date(tournament.deadline))
-      .sort(
-        (a, b) =>
-          new Date(b.deadline).getTime() - new Date(a.deadline).getTime()
-      );
-
-    const previousTournament = sortedTournaments[0];
-    const previousLineup = previousTournament
-      ? allLineups.filter(
-          (l) =>
-            l.team_id === teamId &&
-            l.tournament_id === previousTournament.tournament_id
-        )
-      : [];
+    // Get previous tournament lineup for smart defaults
+    const previousLineupRows = await sql`
+      SELECT l.slot
+      FROM lineups l
+      JOIN tournaments t ON t.tournament_id = l.tournament_id
+      WHERE l.team_id = ${teamId}
+        AND t.deadline < ${tournament.deadline}
+      ORDER BY t.deadline DESC
+      LIMIT 4
+    `;
+    const previousLineup = previousLineupRows.map((r) => ({ slot: r.slot as number, fedex_points: null, team_id: teamId, tournament_id: '' })) as LineupEntry[];
 
     const defaultSlots = getDefaultLineup(teamRoster, previousLineup);
 
-    // Build roster with selection state
-    const rosterWithState = teamRoster
-      .sort((a, b) => a.slot - b.slot)
-      .map((r) => ({
-        ...r,
-        golfer_name:
-          golfers.find((g) => g.golfer_id === r.golfer_id)?.name ?? 'Unknown',
-        isSelected: currentLineup.some((l) => l.slot === r.slot),
-        isDefault: defaultSlots.includes(r.slot),
-        canSelect: canUseSlot(r),
-      }));
+    const rosterWithState = teamRoster.map((r) => ({
+      ...r,
+      isSelected: currentLineup.some((l) => l.slot === r.slot),
+      isDefault: defaultSlots.includes(r.slot),
+      canSelect: canUseSlot(r),
+    }));
 
     return NextResponse.json({
       tournament,
@@ -111,26 +87,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const [rostersData, tournamentsData, lineupsData] = await Promise.all([
-      getSheetData(SHEET_NAMES.ROSTERS),
-      getSheetData(SHEET_NAMES.TOURNAMENTS),
-      getSheetData(SHEET_NAMES.LINEUPS),
+    const [tournamentRows, rosterRows] = await Promise.all([
+      sql`SELECT tournament_id, name, deadline, status FROM tournaments WHERE tournament_id = ${tournamentId}`,
+      sql`SELECT team_id, slot, golfer_id, times_used FROM rosters WHERE team_id = ${teamId}`,
     ]);
 
-    const rosters = parseRosters(rostersData);
-    const tournaments = parseTournaments(tournamentsData);
-    const allLineups = parseLineups(lineupsData);
-
-    const tournament = tournaments.find((t) => t.tournament_id === tournamentId);
-
-    if (!tournament) {
-      return NextResponse.json(
-        { error: 'Tournament not found' },
-        { status: 404 }
-      );
+    if (tournamentRows.length === 0) {
+      return NextResponse.json({ error: 'Tournament not found' }, { status: 404 });
     }
 
-    // Check if locked
+    const tournament = tournamentRows[0] as Tournament;
+    const teamRoster = rosterRows as RosterEntry[];
+
     if (tournament.status === 'locked' || isDeadlinePassed(tournament.deadline)) {
       return NextResponse.json(
         { error: 'Tournament is locked, cannot submit lineup' },
@@ -138,38 +106,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate lineup
-    const teamRoster = rosters.filter((r) => r.team_id === teamId);
     const validation = validateLineupSelection(slots, teamRoster);
-
     if (!validation.valid) {
       return NextResponse.json({ error: validation.error }, { status: 400 });
     }
 
-    // Check if lineup already exists (update vs create)
-    const existingLineup = allLineups.filter(
-      (l) => l.team_id === teamId && l.tournament_id === tournamentId
-    );
-
-    if (existingLineup.length > 0) {
-      // TODO: Implement update logic - for now, return error
-      return NextResponse.json(
-        { error: 'Lineup already exists. Updates not yet implemented.' },
-        { status: 400 }
-      );
-    }
-
-    // Append new lineup rows
+    // Delete existing lineup for this team+tournament, then insert new slots (upsert behaviour)
+    await sql`DELETE FROM lineups WHERE tournament_id = ${tournamentId} AND team_id = ${teamId}`;
     for (const slot of slots) {
-      await appendSheetRow(SHEET_NAMES.LINEUPS, [
-        tournamentId,
-        teamId,
-        slot,
-        '', // fedex_points - empty initially
-      ]);
+      await sql`INSERT INTO lineups (tournament_id, team_id, slot) VALUES (${tournamentId}, ${teamId}, ${slot})`;
     }
-
-    // TODO: Increment times_used for each slot in roster
 
     return NextResponse.json({ success: true });
   } catch (error) {
