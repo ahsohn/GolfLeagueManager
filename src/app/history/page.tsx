@@ -23,8 +23,8 @@ export default function HistoryPage() {
       fetch('/api/tournaments')
         .then((r) => r.json())
         .then((data: Tournament[]) => {
-          // Filter to only show locked (completed) tournaments
-          const pastTournaments = data.filter((t) => t.status === 'locked');
+          // Filter to only show completed tournaments (any status that isn't 'open')
+          const pastTournaments = data.filter((t) => t.status !== 'open');
           setTournaments(pastTournaments);
           setLoading(false);
         });

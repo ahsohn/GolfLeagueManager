@@ -20,7 +20,7 @@ export interface Tournament {
   tournament_id: string;
   name: string;
   deadline: string; // ISO datetime
-  status: 'open' | 'locked';
+  status: 'open' | 'locked' | 'closed';
 }
 
 export interface LineupEntry {
