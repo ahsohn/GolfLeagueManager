@@ -185,6 +185,18 @@ export default function HomePage() {
             <span className="font-medium text-charcoal">Waivers</span>
           </Link>
 
+          <Link
+            href="/history"
+            className="card hover:shadow-golf-lg transition-all group cursor-pointer text-center py-6"
+          >
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cream-dark to-sand mx-auto mb-3 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <svg className="w-6 h-6 text-masters-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <span className="font-medium text-charcoal">Past Results</span>
+          </Link>
+
           {isCommissioner && (
             <Link
               href="/admin"

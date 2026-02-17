@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSheetData, updateSheetRow, SHEET_NAMES } from '@/lib/sheets';
-import { parseLineups, parseStandings, parseTeams } from '@/lib/data';
+import { parseLineups, parseRosters, parseStandings, parseTeams } from '@/lib/data';
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,6 +17,11 @@ export async function POST(request: NextRequest) {
 
     const lineupsData = await getSheetData(SHEET_NAMES.LINEUPS);
     const lineups = parseLineups(lineupsData);
+    const rostersData = await getSheetData(SHEET_NAMES.ROSTERS);
+    const rosters = parseRosters(rostersData);
+
+    // Track which slots need times_used incremented (only if they didn't have points before)
+    const slotsToIncrement: { team_id: number; slot: number }[] = [];
 
     // Update each lineup entry with points
     for (const result of results) {
@@ -29,12 +34,37 @@ export async function POST(request: NextRequest) {
 
       if (rowIndex !== -1) {
         const lineup = lineups[rowIndex];
+
+        // Only increment times_used if this slot didn't have points before
+        if (lineup.fedex_points === null) {
+          slotsToIncrement.push({ team_id: result.team_id, slot: result.slot });
+        }
+
         await updateSheetRow(SHEET_NAMES.LINEUPS, rowIndex + 2, [
           lineup.tournament_id,
           lineup.team_id,
           lineup.slot,
           result.fedex_points,
         ]);
+      }
+    }
+
+    // Increment times_used for slots that were newly scored
+    for (const { team_id, slot } of slotsToIncrement) {
+      const rosterRowIndex = rosters.findIndex(
+        (r) => r.team_id === team_id && r.slot === slot
+      );
+
+      if (rosterRowIndex !== -1) {
+        const roster = rosters[rosterRowIndex];
+        await updateSheetRow(SHEET_NAMES.ROSTERS, rosterRowIndex + 2, [
+          roster.team_id,
+          roster.slot,
+          roster.golfer_id,
+          roster.times_used + 1,
+        ]);
+        // Update local copy to handle multiple slots for same team
+        rosters[rosterRowIndex].times_used += 1;
       }
     }
 
