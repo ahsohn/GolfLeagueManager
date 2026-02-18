@@ -1,35 +1,22 @@
 import { NextResponse } from 'next/server';
-import { getSheetData, SHEET_NAMES } from '@/lib/sheets';
-import { parseTeams, parseStandings } from '@/lib/data';
+import { sql } from '@/lib/db';
 
-// Disable caching to always fetch fresh data from Google Sheets
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const [teamsData, standingsData] = await Promise.all([
-      getSheetData(SHEET_NAMES.TEAMS),
-      getSheetData(SHEET_NAMES.STANDINGS),
-    ]);
+    const rows = await sql`
+      SELECT
+        t.team_id,
+        t.team_name,
+        t.owner_email,
+        COALESCE(s.total_points, 0) AS total_points
+      FROM teams t
+      LEFT JOIN standings s ON s.team_id = t.team_id
+      ORDER BY total_points DESC
+    `;
 
-    const teams = parseTeams(teamsData);
-    const standings = parseStandings(standingsData);
-
-    // Join teams with standings
-    const result = teams.map((team) => {
-      const standing = standings.find((s) => s.team_id === team.team_id);
-      return {
-        team_id: team.team_id,
-        team_name: team.team_name,
-        owner_email: team.owner_email,
-        total_points: standing?.total_points ?? 0,
-      };
-    });
-
-    // Sort by points descending
-    result.sort((a, b) => b.total_points - a.total_points);
-
-    return NextResponse.json(result);
+    return NextResponse.json(rows);
   } catch (error) {
     console.error('Standings error:', error);
     return NextResponse.json({ error: 'Server error' }, { status: 500 });

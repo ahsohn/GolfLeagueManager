@@ -1,11 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import {
-  getSheetData,
-  appendSheetRow,
-  updateSheetRow,
-  SHEET_NAMES,
-} from '@/lib/sheets';
-import { parseRosters, parseGolfers } from '@/lib/data';
+import { sql } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,19 +12,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const [rostersData, golfersData] = await Promise.all([
-      getSheetData(SHEET_NAMES.ROSTERS),
-      getSheetData(SHEET_NAMES.GOLFERS),
-    ]);
-
-    const rosters = parseRosters(rostersData);
-    const golfers = parseGolfers(golfersData);
-
     // Validate drop golfer is on team's roster at the specified slot
-    const dropEntry = rosters.find(
-      (r) => r.team_id === teamId && r.golfer_id === dropGolferId && r.slot === slot
-    );
-    if (!dropEntry) {
+    const dropRows = await sql`
+      SELECT golfer_id FROM rosters
+      WHERE team_id = ${teamId} AND golfer_id = ${dropGolferId} AND slot = ${slot}
+    `;
+    if (dropRows.length === 0) {
       return NextResponse.json(
         { error: 'Golfer to drop is not on your roster at the specified slot' },
         { status: 400 }
@@ -38,46 +25,34 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate add golfer exists and is not rostered
-    const addGolfer = golfers.find((g) => g.golfer_id === addGolferId);
-    if (!addGolfer) {
-      return NextResponse.json(
-        { error: 'Golfer to add does not exist' },
-        { status: 400 }
-      );
-    }
-
-    const isRostered = rosters.some((r) => r.golfer_id === addGolferId);
-    if (isRostered) {
-      return NextResponse.json(
-        { error: 'Golfer to add is already on a roster' },
-        { status: 400 }
-      );
-    }
-
-    // Find row index of roster entry to update (add 2 for header and 1-indexing)
-    const dropRowIndex =
-      rosters.findIndex(
-        (r) => r.team_id === teamId && r.slot === slot
-      ) + 2;
-
-    // Update roster entry with new golfer, reset times_used to 0
-    await updateSheetRow(SHEET_NAMES.ROSTERS, dropRowIndex, [
-      teamId,
-      slot,
-      addGolferId,
-      0, // Reset times_used for new golfer
+    const [addGolferRows, rosteredRows] = await Promise.all([
+      sql`SELECT golfer_id, name FROM golfers WHERE golfer_id = ${addGolferId}`,
+      sql`SELECT golfer_id FROM rosters WHERE golfer_id = ${addGolferId}`,
     ]);
 
-    // Log the waiver
-    const dropGolferName =
-      golfers.find((g) => g.golfer_id === dropGolferId)?.name ?? 'Unknown';
-    await appendSheetRow(SHEET_NAMES.WAIVER_LOG, [
-      new Date().toISOString(),
-      teamId,
-      dropGolferName,
-      addGolfer.name,
-      slot,
-    ]);
+    if (addGolferRows.length === 0) {
+      return NextResponse.json({ error: 'Golfer to add does not exist' }, { status: 400 });
+    }
+    if (rosteredRows.length > 0) {
+      return NextResponse.json({ error: 'Golfer to add is already on a roster' }, { status: 400 });
+    }
+
+    const addGolferName = addGolferRows[0].name as string;
+
+    // Get drop golfer name for the log
+    const dropGolferRows = await sql`SELECT name FROM golfers WHERE golfer_id = ${dropGolferId}`;
+    const dropGolferName = (dropGolferRows[0]?.name as string) ?? 'Unknown';
+
+    // Update roster and log waiver
+    await sql`
+      UPDATE rosters
+      SET golfer_id = ${addGolferId}, times_used = 0
+      WHERE team_id = ${teamId} AND slot = ${slot}
+    `;
+    await sql`
+      INSERT INTO waiver_log (timestamp, team_id, dropped_golfer, added_golfer, slot)
+      VALUES (${new Date().toISOString()}, ${teamId}, ${dropGolferName}, ${addGolferName}, ${slot})
+    `;
 
     return NextResponse.json({ success: true });
   } catch (error) {

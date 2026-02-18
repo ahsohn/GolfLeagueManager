@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSheetData, SHEET_NAMES } from '@/lib/sheets';
-import { parseTeams, parseConfig, getConfigValue } from '@/lib/data';
+import { sql } from '@/lib/db';
 import { LoginResponse } from '@/types';
 
 export async function POST(request: NextRequest) {
@@ -16,35 +15,27 @@ export async function POST(request: NextRequest) {
 
     const normalizedEmail = email.toLowerCase().trim();
 
-    // Get teams
-    const teamsData = await getSheetData(SHEET_NAMES.TEAMS);
-    const teams = parseTeams(teamsData);
-    const team = teams.find(
-      (t) => t.owner_email.toLowerCase() === normalizedEmail
-    );
+    const [teamRows, configRows] = await Promise.all([
+      sql`SELECT team_id, team_name, owner_email FROM teams WHERE LOWER(owner_email) = ${normalizedEmail}`,
+      sql`SELECT value FROM config WHERE key = 'commissioner_emails'`,
+    ]);
 
-    if (!team) {
+    if (teamRows.length === 0) {
       return NextResponse.json<LoginResponse>(
         { success: false, error: 'Email not found. Contact your commissioner.' },
         { status: 404 }
       );
     }
 
-    // Check if commissioner
-    const configData = await getSheetData(SHEET_NAMES.CONFIG);
-    const configs = parseConfig(configData);
-    const commissionerEmails = getConfigValue(configs, 'commissioner_emails') || '';
+    const team = teamRows[0] as { team_id: number; team_name: string; owner_email: string };
+    const commissionerEmails = (configRows[0]?.value as string) ?? '';
     const isCommissioner = commissionerEmails
       .toLowerCase()
       .split(',')
       .map((e) => e.trim())
       .includes(normalizedEmail);
 
-    return NextResponse.json<LoginResponse>({
-      success: true,
-      team,
-      isCommissioner,
-    });
+    return NextResponse.json<LoginResponse>({ success: true, team, isCommissioner });
   } catch (error) {
     console.error('Login error:', error);
     return NextResponse.json<LoginResponse>(

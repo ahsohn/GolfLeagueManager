@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSheetData, updateSheetRow, SHEET_NAMES } from '@/lib/sheets';
-import { parseLineups, parseRosters, parseStandings, parseTeams } from '@/lib/data';
+import { sql } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,83 +14,52 @@ export async function POST(request: NextRequest) {
 
     // results format: [{ team_id: number, slot: number, fedex_points: number }]
 
-    const lineupsData = await getSheetData(SHEET_NAMES.LINEUPS);
-    const lineups = parseLineups(lineupsData);
-    const rostersData = await getSheetData(SHEET_NAMES.ROSTERS);
-    const rosters = parseRosters(rostersData);
+    // Get current lineup state to determine which slots need times_used incremented
+    const existingLineups = await sql`
+      SELECT team_id, slot, fedex_points
+      FROM lineups
+      WHERE tournament_id = ${tournament_id}
+    `;
 
-    // Track which slots need times_used incremented (only if they didn't have points before)
-    const slotsToIncrement: { team_id: number; slot: number }[] = [];
+    const existingMap = new Map(
+      (existingLineups as { team_id: number; slot: number; fedex_points: number | null }[])
+        .map((l) => [`${l.team_id}:${l.slot}`, l.fedex_points])
+    );
 
-    // Update each lineup entry with points
-    for (const result of results) {
-      const rowIndex = lineups.findIndex(
-        (l) =>
-          l.tournament_id === tournament_id &&
-          l.team_id === result.team_id &&
-          l.slot === result.slot
-      );
+    // Determine which slots are being scored for the first time (fedex_points was NULL)
+    const slotsToIncrement = (results as { team_id: number; slot: number; fedex_points: number }[])
+      .filter((r) => existingMap.get(`${r.team_id}:${r.slot}`) === null);
 
-      if (rowIndex !== -1) {
-        const lineup = lineups[rowIndex];
-
-        // Only increment times_used if this slot didn't have points before
-        if (lineup.fedex_points === null) {
-          slotsToIncrement.push({ team_id: result.team_id, slot: result.slot });
-        }
-
-        await updateSheetRow(SHEET_NAMES.LINEUPS, rowIndex + 2, [
-          lineup.tournament_id,
-          lineup.team_id,
-          lineup.slot,
-          result.fedex_points,
-        ]);
-      }
-    }
-
-    // Increment times_used for slots that were newly scored
-    for (const { team_id, slot } of slotsToIncrement) {
-      const rosterRowIndex = rosters.findIndex(
-        (r) => r.team_id === team_id && r.slot === slot
-      );
-
-      if (rosterRowIndex !== -1) {
-        const roster = rosters[rosterRowIndex];
-        await updateSheetRow(SHEET_NAMES.ROSTERS, rosterRowIndex + 2, [
-          roster.team_id,
-          roster.slot,
-          roster.golfer_id,
-          roster.times_used + 1,
-        ]);
-        // Update local copy to handle multiple slots for same team
-        rosters[rosterRowIndex].times_used += 1;
-      }
-    }
-
-    // Recalculate standings
-    const updatedLineupsData = await getSheetData(SHEET_NAMES.LINEUPS);
-    const updatedLineups = parseLineups(updatedLineupsData);
-    const teamsData = await getSheetData(SHEET_NAMES.TEAMS);
-    const teams = parseTeams(teamsData);
-    const standingsData = await getSheetData(SHEET_NAMES.STANDINGS);
-    const standings = parseStandings(standingsData);
-
-    for (const team of teams) {
-      const teamPoints = updatedLineups
-        .filter((l) => l.team_id === team.team_id)
-        .reduce((sum, l) => sum + (l.fedex_points ?? 0), 0);
-
-      const standingRowIndex = standings.findIndex(
-        (s) => s.team_id === team.team_id
-      );
-
-      if (standingRowIndex !== -1) {
-        await updateSheetRow(SHEET_NAMES.STANDINGS, standingRowIndex + 2, [
-          team.team_id,
-          teamPoints,
-        ]);
-      }
-    }
+    // Run all updates in a transaction
+    await sql.transaction([
+      // Update fedex_points for each result
+      ...results.map((r: { team_id: number; slot: number; fedex_points: number }) =>
+        sql`
+          UPDATE lineups
+          SET fedex_points = ${r.fedex_points}
+          WHERE tournament_id = ${tournament_id}
+            AND team_id = ${r.team_id}
+            AND slot = ${r.slot}
+        `
+      ),
+      // Increment times_used for newly-scored slots
+      ...slotsToIncrement.map((r) =>
+        sql`
+          UPDATE rosters
+          SET times_used = times_used + 1
+          WHERE team_id = ${r.team_id} AND slot = ${r.slot}
+        `
+      ),
+      // Recalculate standings for all teams
+      sql`
+        UPDATE standings s
+        SET total_points = (
+          SELECT COALESCE(SUM(fedex_points), 0)
+          FROM lineups
+          WHERE team_id = s.team_id
+        )
+      `,
+    ]);
 
     return NextResponse.json({ success: true });
   } catch (error) {

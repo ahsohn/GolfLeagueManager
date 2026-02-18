@@ -11,6 +11,7 @@
     "test:watch": "jest --watch"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.0.2",
     "googleapis": "^171.4.0",
     "next": "14.2.35",
     "react": "^18",

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSheetData, appendSheetRow, updateSheetRow, SHEET_NAMES } from '@/lib/sheets';
-import { parseTournaments } from '@/lib/data';
+import { sql } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,44 +13,33 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      await appendSheetRow(SHEET_NAMES.TOURNAMENTS, [
-        tournament_id,
-        name,
-        deadline,
-        status || 'open',
-      ]);
+      await sql`
+        INSERT INTO tournaments (tournament_id, name, deadline, status)
+        VALUES (${tournament_id}, ${name}, ${deadline}, ${status ?? 'open'})
+      `;
 
       return NextResponse.json({ success: true });
     }
 
     if (action === 'update') {
       if (!tournament_id) {
-        return NextResponse.json(
-          { error: 'tournament_id required' },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: 'tournament_id required' }, { status: 400 });
       }
 
-      const tournamentsData = await getSheetData(SHEET_NAMES.TOURNAMENTS);
-      const tournaments = parseTournaments(tournamentsData);
-      const rowIndex = tournaments.findIndex(
-        (t) => t.tournament_id === tournament_id
-      );
-
-      if (rowIndex === -1) {
-        return NextResponse.json(
-          { error: 'Tournament not found' },
-          { status: 404 }
-        );
+      const rows = await sql`SELECT tournament_id, name, deadline, status FROM tournaments WHERE tournament_id = ${tournament_id}`;
+      if (rows.length === 0) {
+        return NextResponse.json({ error: 'Tournament not found' }, { status: 404 });
       }
 
-      const current = tournaments[rowIndex];
-      await updateSheetRow(SHEET_NAMES.TOURNAMENTS, rowIndex + 2, [
-        tournament_id,
-        name || current.name,
-        deadline || current.deadline,
-        status || current.status,
-      ]);
+      const current = rows[0];
+      await sql`
+        UPDATE tournaments
+        SET
+          name     = ${name     ?? current.name},
+          deadline = ${deadline ?? current.deadline},
+          status   = ${status   ?? current.status}
+        WHERE tournament_id = ${tournament_id}
+      `;
 
       return NextResponse.json({ success: true });
     }

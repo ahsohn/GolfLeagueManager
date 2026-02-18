@@ -11,7 +11,7 @@ Fantasy Golf League Manager - A web app for a 13-team fantasy golf league where 
 - **Framework:** Next.js 14 (App Router)
 - **Language:** TypeScript
 - **Styling:** Tailwind CSS
-- **Data:** Google Sheets API v4
+- **Data:** Neon PostgreSQL (via `@neondatabase/serverless`)
 - **Hosting:** Vercel
 
 ## Development Commands
@@ -26,18 +26,23 @@ npm test:watch   # Run tests in watch mode
 ## Architecture
 
 ### Data Flow
-Frontend → Vercel API Routes → Google Sheets
+Frontend → Vercel API Routes → Neon PostgreSQL
 
 ### Key Directories
 - `src/app/` - Next.js pages and API routes
-- `src/lib/` - Shared utilities (sheets.ts, data.ts, lineup-validator.ts)
+- `src/lib/` - Shared utilities (db.ts, lineup-validator.ts)
 - `src/types/` - TypeScript interfaces
 - `src/contexts/` - React contexts (AuthContext)
 
 ### Core Logic
 - `src/lib/lineup-validator.ts` - Lineup rules (4 picks, 8 max uses per slot)
-- `src/lib/data.ts` - Parse sheet data into typed objects
-- `src/lib/sheets.ts` - Google Sheets API connection
+- `src/lib/db.ts` - Neon PostgreSQL client (`sql` tagged template)
+
+### Database Schema
+9 tables defined in `drizzle/migrations/0001_initial.sql`:
+- `teams`, `golfers`, `rosters`, `tournaments`, `lineups`, `standings`, `waiver_log`, `slot_history`, `config`
+
+Run the migration once against your Neon database (paste into Neon console or use psql).
 
 ### Slot-Based Tracking
 The league uses **slot-based** tracking, not golfer-based:
@@ -48,16 +53,25 @@ The league uses **slot-based** tracking, not golfer-based:
 
 ### Environment Variables
 ```
-GOOGLE_SHEET_ID=<spreadsheet-id>
-GOOGLE_SERVICE_ACCOUNT_EMAIL=<service-account-email>
-GOOGLE_PRIVATE_KEY=<private-key>
+DATABASE_URL=<neon-pooled-connection-string>
+```
+
+Add via Vercel Dashboard → Storage → Neon (Marketplace). The `DATABASE_URL` is injected automatically for Preview and Production environments.
+
+For local development, copy the Preview `DATABASE_URL` into `.env.local`.
+
+## Migrating from Google Sheets
+
+A one-time migration script is available:
+
+```bash
+# Requires BOTH Google Sheets vars AND DATABASE_URL set in .env.local
+npx tsx scripts/migrate-from-sheets.ts
 ```
 
 ## Testing
 
-Use separate test and production Google Sheets. Switch via `GOOGLE_SHEET_ID` env var.
-
-See `docs/test-sheet-template.md` for test data structure.
+Use a separate Neon database branch for testing. Switch via `DATABASE_URL` env var.
 
 ## API Endpoints
 
@@ -69,7 +83,7 @@ See `docs/test-sheet-template.md` for test data structure.
 | GET | /api/tournaments/[id] | Tournament detail with lineups |
 | GET | /api/roster/[teamId] | Team roster |
 | GET | /api/lineup | Get lineup state |
-| POST | /api/lineup | Submit lineup (slots) |
+| POST | /api/lineup | Submit/update lineup (slots) |
 | GET | /api/waivers/available | Available golfers |
 | POST | /api/waivers | Execute waiver swap |
 | POST | /api/admin/tournament | Create/update tournament |

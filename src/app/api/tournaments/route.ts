@@ -1,21 +1,17 @@
 import { NextResponse } from 'next/server';
-import { getSheetData, SHEET_NAMES } from '@/lib/sheets';
-import { parseTournaments } from '@/lib/data';
+import { sql } from '@/lib/db';
 
-// Disable caching to always fetch fresh data from Google Sheets
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const data = await getSheetData(SHEET_NAMES.TOURNAMENTS);
-    const tournaments = parseTournaments(data);
+    const rows = await sql`
+      SELECT tournament_id, name, deadline, status
+      FROM tournaments
+      ORDER BY deadline DESC
+    `;
 
-    // Sort by deadline descending (most recent first)
-    tournaments.sort(
-      (a, b) => new Date(b.deadline).getTime() - new Date(a.deadline).getTime()
-    );
-
-    return NextResponse.json(tournaments);
+    return NextResponse.json(rows);
   } catch (error) {
     console.error('Tournaments error:', error);
     return NextResponse.json({ error: 'Server error' }, { status: 500 });

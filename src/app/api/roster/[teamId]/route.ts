@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSheetData, SHEET_NAMES } from '@/lib/sheets';
-import { parseRosters, parseGolfers } from '@/lib/data';
-import { RosterWithGolfers } from '@/types';
+import { sql } from '@/lib/db';
 
-// Disable caching to always fetch fresh data from Google Sheets
 export const dynamic = 'force-dynamic';
 
 export async function GET(
@@ -18,24 +15,20 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid team ID' }, { status: 400 });
     }
 
-    const [rostersData, golfersData] = await Promise.all([
-      getSheetData(SHEET_NAMES.ROSTERS),
-      getSheetData(SHEET_NAMES.GOLFERS),
-    ]);
+    const rows = await sql`
+      SELECT
+        r.team_id,
+        r.slot,
+        r.golfer_id,
+        r.times_used,
+        g.name AS golfer_name
+      FROM rosters r
+      JOIN golfers g ON g.golfer_id = r.golfer_id
+      WHERE r.team_id = ${teamIdNum}
+      ORDER BY r.slot
+    `;
 
-    const rosters = parseRosters(rostersData);
-    const golfers = parseGolfers(golfersData);
-
-    const teamRoster = rosters
-      .filter((r) => r.team_id === teamIdNum)
-      .map((r): RosterWithGolfers => ({
-        ...r,
-        golfer_name:
-          golfers.find((g) => g.golfer_id === r.golfer_id)?.name ?? 'Unknown',
-      }))
-      .sort((a, b) => a.slot - b.slot);
-
-    return NextResponse.json(teamRoster);
+    return NextResponse.json(rows);
   } catch (error) {
     console.error('Roster error:', error);
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
