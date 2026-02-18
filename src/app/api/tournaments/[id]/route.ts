@@ -25,9 +25,9 @@ export async function GET(
           l.fedex_points
         FROM teams tm
         LEFT JOIN lineups l
-          ON l.team_id = tm.team_id AND l.tournament_id = ${id}
+          ON CAST(l.team_id AS INTEGER) = tm.team_id AND l.tournament_id = ${id}
         LEFT JOIN rosters r
-          ON r.team_id = tm.team_id AND r.slot = l.slot
+          ON r.team_id = tm.team_id AND CAST(l.slot AS INTEGER) = r.slot
         LEFT JOIN golfers g
           ON g.golfer_id = r.golfer_id
         ORDER BY tm.team_id, l.slot
