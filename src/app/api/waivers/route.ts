@@ -3,9 +3,15 @@ import { sql } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {
-    const { teamId, dropGolferId, addGolferId, slot } = await request.json();
+    const body = await request.json();
 
-    if (!teamId || !dropGolferId || !addGolferId || !slot) {
+    // Explicit integer parsing to avoid type mismatch issues
+    const teamId = parseInt(String(body.teamId), 10);
+    const dropGolferId = parseInt(String(body.dropGolferId), 10);
+    const addGolferId = parseInt(String(body.addGolferId), 10);
+    const slot = parseInt(String(body.slot), 10);
+
+    if (isNaN(teamId) || isNaN(dropGolferId) || isNaN(addGolferId) || isNaN(slot)) {
       return NextResponse.json(
         { error: 'teamId, dropGolferId, addGolferId, and slot required' },
         { status: 400 }
