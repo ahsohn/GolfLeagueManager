@@ -10,27 +10,27 @@ export async function GET(
   try {
     const { id } = await params;
 
-    const [tournamentRows, lineupRows] = await Promise.all([
+    // Query tournament, teams, lineups, and rosters separately to avoid JOIN issues
+    const [tournamentRows, teamRows, lineupRows, rosterRows] = await Promise.all([
       sql`
         SELECT tournament_id, name, deadline, status
         FROM tournaments
         WHERE tournament_id = ${id}
       `,
       sql`
-        SELECT
-          tm.team_id,
-          tm.team_name,
-          l.slot,
-          g.name AS golfer_name,
-          l.fedex_points
-        FROM teams tm
-        LEFT JOIN lineups l
-          ON CAST(l.team_id AS INTEGER) = tm.team_id AND l.tournament_id = ${id}
-        LEFT JOIN rosters r
-          ON r.team_id = tm.team_id AND CAST(l.slot AS INTEGER) = r.slot
-        LEFT JOIN golfers g
-          ON g.golfer_id = r.golfer_id
-        ORDER BY tm.team_id, l.slot
+        SELECT team_id, team_name
+        FROM teams
+        ORDER BY team_id
+      `,
+      sql`
+        SELECT team_id, slot, fedex_points
+        FROM lineups
+        WHERE tournament_id = ${id}
+      `,
+      sql`
+        SELECT r.team_id, r.slot, g.name AS golfer_name
+        FROM rosters r
+        JOIN golfers g ON g.golfer_id = r.golfer_id
       `,
     ]);
 
@@ -40,35 +40,47 @@ export async function GET(
 
     const tournament = tournamentRows[0];
 
-    // Group lineup rows by team
-    const teamMap = new Map<number, {
-      team_id: number;
-      team_name: string;
-      lineup: { slot: number; golfer_name: string; fedex_points: number | null }[];
-    }>();
-
-    for (const row of lineupRows) {
-      const teamId = row.team_id as number;
-      if (!teamMap.has(teamId)) {
-        teamMap.set(teamId, {
-          team_id: teamId,
-          team_name: row.team_name as string,
-          lineup: [],
-        });
-      }
-      if (row.slot !== null) {
-        teamMap.get(teamId)!.lineup.push({
-          slot: row.slot as number,
-          golfer_name: (row.golfer_name as string) ?? 'Unknown',
-          fedex_points: row.fedex_points as number | null,
-        });
-      }
+    // Create lookup maps
+    const rosterMap = new Map<string, string>();
+    for (const r of rosterRows) {
+      const key = `${r.team_id}-${r.slot}`;
+      rosterMap.set(key, r.golfer_name as string);
     }
 
-    const lineups = Array.from(teamMap.values()).map((team) => ({
-      ...team,
-      total_points: team.lineup.reduce((sum, l) => sum + (l.fedex_points ?? 0), 0),
-    }));
+    // Group lineups by team
+    const lineupsByTeam = new Map<number, { slot: number; fedex_points: number | null }[]>();
+    for (const l of lineupRows) {
+      const teamId = Number(l.team_id);
+      if (!lineupsByTeam.has(teamId)) {
+        lineupsByTeam.set(teamId, []);
+      }
+      lineupsByTeam.get(teamId)!.push({
+        slot: Number(l.slot),
+        fedex_points: l.fedex_points as number | null,
+      });
+    }
+
+    // Build final lineup structure
+    const lineups = teamRows.map((team) => {
+      const teamId = team.team_id as number;
+      const teamLineups = lineupsByTeam.get(teamId) || [];
+
+      const lineup = teamLineups.map((l) => {
+        const golferName = rosterMap.get(`${teamId}-${l.slot}`) || 'Unknown';
+        return {
+          slot: l.slot,
+          golfer_name: golferName,
+          fedex_points: l.fedex_points,
+        };
+      });
+
+      return {
+        team_id: teamId,
+        team_name: team.team_name as string,
+        lineup,
+        total_points: lineup.reduce((sum, l) => sum + (l.fedex_points ?? 0), 0),
+      };
+    });
 
     return NextResponse.json({ tournament, lineups });
   } catch (error) {
