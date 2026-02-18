@@ -78,9 +78,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { teamId, tournamentId, slots } = await request.json();
+    const body = await request.json();
+    const teamId = parseInt(String(body.teamId), 10);
+    const tournamentId = String(body.tournamentId);
+    const slots = body.slots;
 
-    if (!teamId || !tournamentId || !Array.isArray(slots)) {
+    if (isNaN(teamId) || !tournamentId || !Array.isArray(slots)) {
       return NextResponse.json(
         { error: 'teamId, tournamentId, and slots required' },
         { status: 400 }
@@ -114,7 +117,8 @@ export async function POST(request: NextRequest) {
     // Delete existing lineup for this team+tournament, then insert new slots (upsert behaviour)
     await sql`DELETE FROM lineups WHERE tournament_id = ${tournamentId} AND team_id = ${teamId}`;
     for (const slot of slots) {
-      await sql`INSERT INTO lineups (tournament_id, team_id, slot) VALUES (${tournamentId}, ${teamId}, ${slot})`;
+      const slotNum = parseInt(String(slot), 10);
+      await sql`INSERT INTO lineups (tournament_id, team_id, slot) VALUES (${tournamentId}, ${teamId}, ${slotNum})`;
     }
 
     return NextResponse.json({ success: true });
