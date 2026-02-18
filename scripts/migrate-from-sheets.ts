@@ -9,9 +9,10 @@
  *   npx tsx scripts/migrate-from-sheets.ts
  */
 
-import 'dotenv/config';
-import { neon } from '@neondatabase/serverless';
+import dotenv from 'dotenv';
 import path from 'path';
+dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
+import { neon } from '@neondatabase/serverless';
 
 // Use the sheets/data libs from src/ via relative imports
 // eslint-disable-next-line @typescript-eslint/no-require-imports
