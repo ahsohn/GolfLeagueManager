@@ -23,6 +23,8 @@ export default function AdminPage() {
     deadline: '',
     status: '' as 'open' | 'locked' | 'closed' | '',
   });
+  const [carryoverStatus, setCarryoverStatus] = useState<{ [key: string]: 'loading' | 'success' | 'error' | null }>({});
+  const [carryoverMessage, setCarryoverMessage] = useState<{ [key: string]: string }>({});
 
   useEffect(() => {
     if (!isLoading && (!team || !isCommissioner)) {
@@ -57,6 +59,37 @@ export default function AdminPage() {
     });
     const res = await fetch('/api/tournaments');
     setTournaments(await res.json());
+  };
+
+  const applyCarryover = async (id: string) => {
+    setCarryoverStatus((prev) => ({ ...prev, [id]: 'loading' }));
+    setCarryoverMessage((prev) => ({ ...prev, [id]: '' }));
+
+    try {
+      const res = await fetch('/api/admin/carryover', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tournament_id: id }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setCarryoverStatus((prev) => ({ ...prev, [id]: 'success' }));
+        setCarryoverMessage((prev) => ({ ...prev, [id]: data.message }));
+        // Clear success message after 5 seconds
+        setTimeout(() => {
+          setCarryoverStatus((prev) => ({ ...prev, [id]: null }));
+          setCarryoverMessage((prev) => ({ ...prev, [id]: '' }));
+        }, 5000);
+      } else {
+        setCarryoverStatus((prev) => ({ ...prev, [id]: 'error' }));
+        setCarryoverMessage((prev) => ({ ...prev, [id]: data.error || 'Failed to apply carryover' }));
+      }
+    } catch {
+      setCarryoverStatus((prev) => ({ ...prev, [id]: 'error' }));
+      setCarryoverMessage((prev) => ({ ...prev, [id]: 'Network error' }));
+    }
   };
 
   const openEditModal = (tournament: Tournament) => {
@@ -227,9 +260,10 @@ export default function AdminPage() {
             {tournaments.map((t, index) => (
               <div
                 key={t.tournament_id}
-                className="flex justify-between items-center p-4 rounded-lg bg-cream/50 border border-cream-dark hover:border-masters-green/30 transition-colors"
+                className="p-4 rounded-lg bg-cream/50 border border-cream-dark hover:border-masters-green/30 transition-colors"
                 style={{ animationDelay: `${index * 30}ms` }}
               >
+                <div className="flex justify-between items-center">
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 rounded-full bg-masters-green/10 text-masters-green flex items-center justify-center font-semibold text-sm">
                     {t.tournament_id}
@@ -263,6 +297,26 @@ export default function AdminPage() {
                     </svg>
                     Results
                   </Link>
+                  <button
+                    onClick={() => applyCarryover(t.tournament_id)}
+                    disabled={carryoverStatus[t.tournament_id] === 'loading'}
+                    className="btn btn-secondary text-sm py-2 px-4"
+                    title="Apply previous lineup to teams that didn't submit"
+                  >
+                    {carryoverStatus[t.tournament_id] === 'loading' ? (
+                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Carryover
+                      </>
+                    )}
+                  </button>
                   {t.status === 'open' && (
                     <button
                       onClick={() => lockTournament(t.tournament_id)}
@@ -275,6 +329,18 @@ export default function AdminPage() {
                     </button>
                   )}
                 </div>
+                </div>
+                {carryoverMessage[t.tournament_id] && (
+                  <div className={`mt-3 text-sm px-3 py-2 rounded ${
+                    carryoverStatus[t.tournament_id] === 'success'
+                      ? 'bg-green-50 text-green-700 border border-green-200'
+                      : carryoverStatus[t.tournament_id] === 'error'
+                      ? 'bg-red-50 text-red-700 border border-red-200'
+                      : ''
+                  }`}>
+                    {carryoverMessage[t.tournament_id]}
+                  </div>
+                )}
               </div>
             ))}
 

@@ -92,6 +92,48 @@ export function getDefaultLineup(
   return Array.from(selected).sort((a, b) => a - b);
 }
 
+/**
+ * Build a carryover lineup for a team that didn't submit.
+ * Uses the previous tournament's lineup, filtering out slots that have been maxed out.
+ * If fewer than 4 eligible slots remain, fills with other eligible slots from roster.
+ *
+ * @returns Array of slot numbers for the carryover lineup, or empty array if no valid lineup possible
+ */
+export function buildCarryoverLineup(
+  roster: RosterEntry[],
+  previousLineupSlots: number[]
+): number[] {
+  const eligibleRoster = roster
+    .filter(canUseSlot)
+    .sort((a, b) => a.slot - b.slot);
+
+  // If no eligible slots at all, return empty
+  if (eligibleRoster.length === 0) {
+    return [];
+  }
+
+  // If no previous lineup, use top 4 eligible slots
+  if (previousLineupSlots.length === 0) {
+    return eligibleRoster.slice(0, LINEUP_SIZE).map((r) => r.slot);
+  }
+
+  // Start with previous lineup slots that are still eligible
+  const stillEligible = previousLineupSlots.filter((slot) =>
+    eligibleRoster.some((r) => r.slot === slot)
+  );
+
+  // Fill remaining with next eligible slots if needed
+  const selected = new Set(stillEligible);
+  for (const entry of eligibleRoster) {
+    if (selected.size >= LINEUP_SIZE) break;
+    if (!selected.has(entry.slot)) {
+      selected.add(entry.slot);
+    }
+  }
+
+  return Array.from(selected).sort((a, b) => a - b);
+}
+
 export function isDeadlinePassed(deadline: string): boolean {
   // Deadlines are stored without timezone but are meant to be Eastern Time.
   // The deadline string is like "2026-02-18T23:59:00" meaning 11:59 PM Eastern.

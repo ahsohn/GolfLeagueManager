@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
@@ -22,6 +22,9 @@ export default function ResultsPage() {
   const [results, setResults] = useState<LineupResult[]>([]);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState('');
+  const [teamsWithoutLineups, setTeamsWithoutLineups] = useState<string[]>([]);
+  const [applyingCarryover, setApplyingCarryover] = useState(false);
+  const [carryoverMessage, setCarryoverMessage] = useState('');
 
   useEffect(() => {
     if (!isLoading && !isCommissioner) {
@@ -29,31 +32,43 @@ export default function ResultsPage() {
     }
   }, [isLoading, isCommissioner, router]);
 
-  useEffect(() => {
-    if (id) {
-      fetch(`/api/tournaments/${id}`)
-        .then((r) => r.json())
-        .then((data) => {
-          setTournamentName(data.tournament?.name || '');
-          // Flatten lineups into result entries
-          const flatResults: LineupResult[] = [];
-          data.lineups.forEach((team: { team_id: number; team_name: string; lineup: { slot: number; golfer_name: string; fedex_points: number | null }[] }) => {
-            team.lineup.forEach((l) => {
-              flatResults.push({
-                team_id: team.team_id,
-                team_name: team.team_name,
-                slot: l.slot,
-                golfer_name: l.golfer_name,
-                fedex_points: l.fedex_points || 0,
-              });
-            });
+  const fetchData = useCallback(async () => {
+    if (!id) return;
+    const res = await fetch(`/api/tournaments/${id}`);
+    const data = await res.json();
+
+    setTournamentName(data.tournament?.name || '');
+
+    // Track teams without lineups
+    const missingTeams: string[] = [];
+
+    // Flatten lineups into result entries
+    const flatResults: LineupResult[] = [];
+    data.lineups.forEach((team: { team_id: number; team_name: string; lineup: { slot: number; golfer_name: string; fedex_points: number | null }[] }) => {
+      if (team.lineup.length === 0) {
+        missingTeams.push(team.team_name);
+      } else {
+        team.lineup.forEach((l) => {
+          flatResults.push({
+            team_id: team.team_id,
+            team_name: team.team_name,
+            slot: l.slot,
+            golfer_name: l.golfer_name,
+            fedex_points: l.fedex_points || 0,
           });
-          setResults(flatResults.sort((a, b) =>
-            a.team_name.localeCompare(b.team_name) || a.slot - b.slot
-          ));
         });
-    }
+      }
+    });
+
+    setTeamsWithoutLineups(missingTeams);
+    setResults(flatResults.sort((a, b) =>
+      a.team_name.localeCompare(b.team_name) || a.slot - b.slot
+    ));
   }, [id]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const updatePoints = (teamId: number, slot: number, points: number) => {
     setResults(
@@ -63,6 +78,35 @@ export default function ResultsPage() {
           : r
       )
     );
+  };
+
+  const handleApplyCarryover = async () => {
+    setApplyingCarryover(true);
+    setCarryoverMessage('');
+
+    try {
+      const res = await fetch('/api/admin/carryover', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tournament_id: id }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setCarryoverMessage(data.message);
+        // Refresh the data to show the new lineups
+        await fetchData();
+        // Clear message after 5 seconds
+        setTimeout(() => setCarryoverMessage(''), 5000);
+      } else {
+        setCarryoverMessage(`Error: ${data.error}`);
+      }
+    } catch {
+      setCarryoverMessage('Network error applying carryover');
+    }
+
+    setApplyingCarryover(false);
   };
 
   const handleSave = async () => {
@@ -148,6 +192,54 @@ export default function ResultsPage() {
             )}
           </div>
         </div>
+
+        {/* Missing Lineups Warning */}
+        {teamsWithoutLineups.length > 0 && (
+          <div className="card mb-6 border-2 border-amber-200 bg-amber-50">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h4 className="font-semibold text-amber-800 mb-1">
+                  {teamsWithoutLineups.length} team{teamsWithoutLineups.length > 1 ? 's' : ''} missing lineups
+                </h4>
+                <p className="text-sm text-amber-700 mb-3">
+                  {teamsWithoutLineups.join(', ')}
+                </p>
+                <button
+                  onClick={handleApplyCarryover}
+                  disabled={applyingCarryover}
+                  className="btn btn-secondary text-sm py-2 px-4 bg-white border-amber-300 hover:bg-amber-100"
+                >
+                  {applyingCarryover ? (
+                    <span className="flex items-center gap-2">
+                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      Applying...
+                    </span>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      Apply Carryover (use previous lineups)
+                    </>
+                  )}
+                </button>
+                {carryoverMessage && (
+                  <p className={`text-sm mt-2 ${carryoverMessage.startsWith('Error') ? 'text-red-600' : 'text-green-600'}`}>
+                    {carryoverMessage}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Results by Team */}
         <div className="space-y-6 mb-8">
