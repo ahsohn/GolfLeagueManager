@@ -17,6 +17,12 @@ export default function AdminPage() {
     deadline: '',
   });
   const [saving, setSaving] = useState(false);
+  const [editingTournament, setEditingTournament] = useState<Tournament | null>(null);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    deadline: '',
+    status: '' as 'open' | 'locked' | 'closed' | '',
+  });
 
   useEffect(() => {
     if (!isLoading && (!team || !isCommissioner)) {
@@ -51,6 +57,38 @@ export default function AdminPage() {
     });
     const res = await fetch('/api/tournaments');
     setTournaments(await res.json());
+  };
+
+  const openEditModal = (tournament: Tournament) => {
+    setEditingTournament(tournament);
+    // Format deadline for datetime-local input (YYYY-MM-DDTHH:MM)
+    const deadlineDate = new Date(tournament.deadline);
+    const formattedDeadline = deadlineDate.toISOString().slice(0, 16);
+    setEditForm({
+      name: tournament.name,
+      deadline: formattedDeadline,
+      status: tournament.status,
+    });
+  };
+
+  const saveEditedTournament = async () => {
+    if (!editingTournament) return;
+    setSaving(true);
+    await fetch('/api/admin/tournament', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'update',
+        tournament_id: editingTournament.tournament_id,
+        name: editForm.name,
+        deadline: editForm.deadline,
+        status: editForm.status,
+      }),
+    });
+    setEditingTournament(null);
+    const res = await fetch('/api/tournaments');
+    setTournaments(await res.json());
+    setSaving(false);
   };
 
   if (isLoading || !isCommissioner) {
@@ -204,9 +242,18 @@ export default function AdminPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className={`badge ${t.status === 'open' ? 'badge-open' : 'badge-locked'}`}>
+                  <span className={`badge ${t.status === 'open' ? 'badge-open' : t.status === 'closed' ? 'badge-gold' : 'badge-locked'}`}>
                     {t.status}
                   </span>
+                  <button
+                    onClick={() => openEditModal(t)}
+                    className="btn btn-secondary text-sm py-2 px-4"
+                  >
+                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                    Edit
+                  </button>
                   <Link
                     href={`/admin/results/${t.tournament_id}`}
                     className="btn btn-secondary text-sm py-2 px-4"
@@ -240,6 +287,87 @@ export default function AdminPage() {
           </div>
         </div>
       </main>
+
+      {/* Edit Tournament Modal */}
+      {editingTournament && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+            <div className="bg-gradient-to-r from-masters-green to-masters-fairway px-6 py-4">
+              <h3 className="font-display text-lg font-semibold text-white">
+                Edit Tournament
+              </h3>
+              <p className="text-white/80 text-sm">{editingTournament.tournament_id}</p>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-charcoal-light mb-2 uppercase tracking-wide">
+                  Tournament Name
+                </label>
+                <input
+                  type="text"
+                  value={editForm.name}
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  className="input w-full"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-charcoal-light mb-2 uppercase tracking-wide">
+                  Deadline (Eastern Time)
+                </label>
+                <input
+                  type="datetime-local"
+                  value={editForm.deadline}
+                  onChange={(e) => setEditForm({ ...editForm, deadline: e.target.value })}
+                  className="input w-full"
+                />
+                <p className="text-xs text-charcoal-light mt-1">
+                  Lineups will lock at this time (Eastern)
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-charcoal-light mb-2 uppercase tracking-wide">
+                  Status
+                </label>
+                <select
+                  value={editForm.status}
+                  onChange={(e) => setEditForm({ ...editForm, status: e.target.value as 'open' | 'locked' | 'closed' })}
+                  className="input w-full"
+                >
+                  <option value="open">Open</option>
+                  <option value="locked">Locked</option>
+                  <option value="closed">Closed</option>
+                </select>
+              </div>
+            </div>
+            <div className="px-6 py-4 bg-cream/50 flex justify-end gap-3">
+              <button
+                onClick={() => setEditingTournament(null)}
+                className="btn btn-secondary py-2 px-4"
+                disabled={saving}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveEditedTournament}
+                disabled={saving || !editForm.name || !editForm.deadline}
+                className="btn btn-primary py-2 px-4"
+              >
+                {saving ? (
+                  <span className="flex items-center gap-2">
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    Saving...
+                  </span>
+                ) : (
+                  'Save Changes'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
