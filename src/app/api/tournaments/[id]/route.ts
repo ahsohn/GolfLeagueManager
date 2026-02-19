@@ -89,7 +89,15 @@ export async function GET(
       };
     });
 
-    return NextResponse.json({ tournament, lineups });
+    return NextResponse.json({
+      tournament,
+      lineups,
+      _debug: {
+        tournamentId: id,
+        lineupRowsCount: lineupRows.length,
+        lineupTeamIds: [...new Set(lineupRows.map(l => l.team_id))],
+      }
+    });
   } catch (error) {
     console.error('Tournament detail error:', error);
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
