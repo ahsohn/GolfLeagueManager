@@ -93,5 +93,32 @@ export function getDefaultLineup(
 }
 
 export function isDeadlinePassed(deadline: string): boolean {
-  return new Date(deadline) < new Date();
+  // Deadlines are stored without timezone but are meant to be Eastern Time.
+  // The deadline string is like "2026-02-18T23:59:00" meaning 11:59 PM Eastern.
+  //
+  // Strategy: Get the current time in Eastern, format it as a naive string,
+  // then compare strings/dates directly.
+
+  const now = new Date();
+
+  // Format current time as Eastern timezone naive datetime string
+  const easternFormatter = new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'America/New_York',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
+
+  // This gives us "YYYY-MM-DD HH:MM:SS" in Eastern time
+  const nowEasternStr = easternFormatter.format(now).replace(' ', 'T');
+
+  // Compare the deadline (Eastern) with current Eastern time
+  // Both are naive datetime strings, so direct comparison works
+  const deadlineNormalized = deadline.replace(' ', 'T').substring(0, 19);
+
+  return deadlineNormalized < nowEasternStr;
 }
