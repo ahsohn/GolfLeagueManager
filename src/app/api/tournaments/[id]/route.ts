@@ -95,7 +95,7 @@ export async function GET(
       _debug: {
         tournamentId: id,
         lineupRowsCount: lineupRows.length,
-        lineupTeamIds: [...new Set(lineupRows.map(l => l.team_id))],
+        lineupTeamIds: Array.from(new Set(lineupRows.map(l => l.team_id))),
       }
     });
   } catch (error) {
