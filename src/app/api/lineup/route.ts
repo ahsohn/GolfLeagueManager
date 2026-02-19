@@ -114,9 +114,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: validation.error }, { status: 400 });
     }
 
-    // Log what we're saving
-    console.log('Lineup POST - saving lineup:', { tournamentId: JSON.stringify(tournamentId), teamId, slots });
-
     // Delete existing lineup for this team+tournament, then insert new slots (upsert behaviour)
     await sql`DELETE FROM lineups WHERE tournament_id = ${tournamentId} AND team_id = ${teamId}`;
 

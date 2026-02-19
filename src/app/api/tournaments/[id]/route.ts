@@ -11,9 +11,6 @@ export async function GET(
     const { id } = await params;
 
     // Query tournament, teams, lineups, and rosters separately to avoid JOIN issues
-    // Log the tournament ID being queried
-    console.log('Tournament detail API - querying tournament_id:', JSON.stringify(id), 'type:', typeof id);
-
     const [tournamentRows, teamRows, lineupRows, rosterRows] = await Promise.all([
       sql`
         SELECT tournament_id, name, deadline, status
@@ -37,10 +34,6 @@ export async function GET(
         JOIN golfers g ON g.golfer_id = r.golfer_id
       `,
     ]);
-
-    // Log what we found
-    console.log('Tournament detail API - found lineups:', lineupRows.length, 'rows');
-    console.log('Tournament detail API - lineup team_ids:', lineupRows.map(l => l.team_id));
 
     if (tournamentRows.length === 0) {
       return NextResponse.json({ error: 'Tournament not found' }, { status: 404 });
@@ -90,17 +83,7 @@ export async function GET(
       };
     });
 
-    return NextResponse.json({
-      tournament,
-      lineups,
-      _debug: {
-        tournamentId: id,
-        idType: typeof id,
-        lineupRowsCount: lineupRows.length,
-        lineupTeamIds: Array.from(new Set(lineupRows.map(l => l.team_id))),
-        sampleRows: lineupRows.slice(0, 5),
-      }
-    });
+    return NextResponse.json({ tournament, lineups });
   } catch (error) {
     console.error('Tournament detail error:', error);
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
