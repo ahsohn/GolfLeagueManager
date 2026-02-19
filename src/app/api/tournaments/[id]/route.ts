@@ -26,9 +26,10 @@ export async function GET(
         ORDER BY team_id
       `,
       sql`
-        SELECT team_id, slot, fedex_points
+        SELECT tournament_id, team_id, slot, fedex_points
         FROM lineups
         WHERE tournament_id = ${id}
+        ORDER BY team_id, slot
       `,
       sql`
         SELECT r.team_id, r.slot, g.name AS golfer_name
@@ -94,8 +95,10 @@ export async function GET(
       lineups,
       _debug: {
         tournamentId: id,
+        idType: typeof id,
         lineupRowsCount: lineupRows.length,
         lineupTeamIds: Array.from(new Set(lineupRows.map(l => l.team_id))),
+        sampleRows: lineupRows.slice(0, 5),
       }
     });
   } catch (error) {
