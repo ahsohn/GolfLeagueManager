@@ -116,9 +116,19 @@ export async function POST(request: NextRequest) {
 
     // Delete existing lineup for this team+tournament, then insert new slots (upsert behaviour)
     await sql`DELETE FROM lineups WHERE tournament_id = ${tournamentId} AND team_id = ${teamId}`;
-    for (const slot of slots) {
+
+    // Insert all slots - use Promise.all for parallel execution
+    const insertPromises = slots.map((slot) => {
       const slotNum = parseInt(String(slot), 10);
-      await sql`INSERT INTO lineups (tournament_id, team_id, slot) VALUES (${tournamentId}, ${teamId}, ${slotNum})`;
+      return sql`INSERT INTO lineups (tournament_id, team_id, slot) VALUES (${tournamentId}, ${teamId}, ${slotNum})`;
+    });
+    await Promise.all(insertPromises);
+
+    // Verify the lineup was saved
+    const verifyRows = await sql`SELECT slot FROM lineups WHERE tournament_id = ${tournamentId} AND team_id = ${teamId}`;
+    if (verifyRows.length !== slots.length) {
+      console.error('Lineup verification failed:', { expected: slots.length, actual: verifyRows.length, teamId, tournamentId, slots });
+      return NextResponse.json({ error: 'Failed to save lineup - please try again' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });
