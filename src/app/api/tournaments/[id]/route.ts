@@ -65,19 +65,6 @@ export async function GET(
       });
     }
 
-    // Debug: Check what we have for teams 5 and 7
-    const dbUrl = process.env.DATABASE_URL || '';
-    const urlHost = dbUrl.match(/@([^/]+)/)?.[1] || 'unknown';
-    const debug = {
-      version: 'v8-direct-neon',
-      dbHost: urlHost,
-      timestamp: new Date().toISOString(),
-      totalLineupRows: lineupRows.length,
-      team5InLineupRows: lineupRows.filter((l) => Number(l.team_id) === 5).length,
-      team7InLineupRows: lineupRows.filter((l) => Number(l.team_id) === 7).length,
-      allTeamIds: Array.from(new Set(lineupRows.map(l => l.team_id))).sort((a, b) => Number(a) - Number(b)),
-    };
-
     // Build final lineup structure
     const lineups = teamRows.map((team) => {
       const teamId = Number(team.team_id);
@@ -100,7 +87,7 @@ export async function GET(
       };
     });
 
-    return NextResponse.json({ tournament, lineups, debug });
+    return NextResponse.json({ tournament, lineups });
   } catch (error) {
     console.error('Tournament detail error:', error);
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
