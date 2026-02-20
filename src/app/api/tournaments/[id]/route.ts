@@ -63,14 +63,17 @@ export async function GET(
 
     // Debug: Check what we have for teams 5 and 7
     const debug = {
+      queryParam: id,
+      queryParamType: typeof id,
+      queryParamLength: id.length,
+      queryParamHex: Buffer.from(id).toString('hex'),
       totalLineupRows: lineupRows.length,
       team5InLineupRows: lineupRows.filter((l) => Number(l.team_id) === 5).length,
       team7InLineupRows: lineupRows.filter((l) => Number(l.team_id) === 7).length,
       lineupsByTeamKeys: Array.from(lineupsByTeam.keys()),
       team5InMap: lineupsByTeam.has(5),
       team7InMap: lineupsByTeam.has(7),
-      team5MapValue: lineupsByTeam.get(5),
-      team7MapValue: lineupsByTeam.get(7),
+      rawLineupRows: lineupRows.slice(0, 5),
     };
 
     // Build final lineup structure
