@@ -66,11 +66,13 @@ export async function GET(
     const dbUrl = process.env.DATABASE_URL || '';
     const urlHost = dbUrl.match(/@([^/]+)/)?.[1] || 'unknown';
     const debug = {
+      version: 'v7-sequential',
       dbHost: urlHost,
       timestamp: new Date().toISOString(),
       totalLineupRows: lineupRows.length,
       team5InLineupRows: lineupRows.filter((l) => Number(l.team_id) === 5).length,
       team7InLineupRows: lineupRows.filter((l) => Number(l.team_id) === 7).length,
+      allTeamIds: [...new Set(lineupRows.map(l => l.team_id))].sort((a, b) => Number(a) - Number(b)),
     };
 
     // Build final lineup structure
