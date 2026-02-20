@@ -75,7 +75,7 @@ export async function GET(
       totalLineupRows: lineupRows.length,
       team5InLineupRows: lineupRows.filter((l) => Number(l.team_id) === 5).length,
       team7InLineupRows: lineupRows.filter((l) => Number(l.team_id) === 7).length,
-      allTeamIds: [...new Set(lineupRows.map(l => l.team_id))].sort((a, b) => Number(a) - Number(b)),
+      allTeamIds: Array.from(new Set(lineupRows.map(l => l.team_id))).sort((a, b) => Number(a) - Number(b)),
     };
 
     // Build final lineup structure
