@@ -25,7 +25,7 @@ export async function GET(
       sql`
         SELECT tournament_id, team_id, slot, fedex_points
         FROM lineups
-        WHERE tournament_id = ${id}
+        WHERE tournament_id = 'T002'
         ORDER BY team_id, slot
       `,
       sql`
