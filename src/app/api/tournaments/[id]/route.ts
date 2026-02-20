@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sql } from '@/lib/db';
+import { neon } from '@neondatabase/serverless';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,6 +9,9 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+
+    // Create fresh neon client directly
+    const sql = neon(process.env.DATABASE_URL!);
 
     // Query sequentially to debug the issue
     const tournamentRows = await sql`
@@ -66,7 +69,7 @@ export async function GET(
     const dbUrl = process.env.DATABASE_URL || '';
     const urlHost = dbUrl.match(/@([^/]+)/)?.[1] || 'unknown';
     const debug = {
-      version: 'v7-sequential',
+      version: 'v8-direct-neon',
       dbHost: urlHost,
       timestamp: new Date().toISOString(),
       totalLineupRows: lineupRows.length,
