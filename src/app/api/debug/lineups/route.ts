@@ -38,6 +38,26 @@ export async function GET(request: NextRequest) {
       (r) => Number(r.team_id) === 5 || Number(r.team_id) === 7
     );
 
+    // Check rosters for teams 5 and 7
+    const rosterRows = await sql`
+      SELECT r.team_id, r.slot, g.name AS golfer_name
+      FROM rosters r
+      JOIN golfers g ON g.golfer_id = r.golfer_id
+      WHERE r.team_id IN (5, 7)
+      ORDER BY r.team_id, r.slot
+    `;
+
+    // Build roster map like the tournament API does
+    const rosterMap = new Map<string, string>();
+    for (const r of rosterRows) {
+      const key = `${r.team_id}-${r.slot}`;
+      rosterMap.set(key, r.golfer_name as string);
+    }
+
+    // Check what keys exist for teams 5 and 7
+    const team5Keys = Array.from(rosterMap.keys()).filter(k => k.startsWith('5-'));
+    const team7Keys = Array.from(rosterMap.keys()).filter(k => k.startsWith('7-'));
+
     return NextResponse.json({
       tournamentId,
       totalRows: lineupRows.length,
@@ -47,6 +67,9 @@ export async function GET(request: NextRequest) {
       rawFirst10: lineupRows.slice(0, 10),
       team5Rows: lineupRows.filter((r) => Number(r.team_id) === 5),
       team7Rows: lineupRows.filter((r) => Number(r.team_id) === 7),
+      rosterTeams5and7: rosterRows,
+      team5RosterKeys: team5Keys,
+      team7RosterKeys: team7Keys,
     });
   } catch (error) {
     console.error('Debug error:', error);

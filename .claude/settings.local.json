@@ -16,7 +16,12 @@
       "Bash(git push)",
       "mcp__plugin_playwright_playwright__browser_evaluate",
       "mcp__plugin_playwright_playwright__browser_network_requests",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(npx tsx:*)",
+      "Bash(curl:*)",
+      "Bash(npx json:*)",
+      "Bash(npm run dev:*)",
+      "Bash(node:*)"
     ]
   }
 }

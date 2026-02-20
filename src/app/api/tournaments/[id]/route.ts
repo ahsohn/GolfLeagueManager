@@ -44,7 +44,7 @@ export async function GET(
     // Create lookup maps
     const rosterMap = new Map<string, string>();
     for (const r of rosterRows) {
-      const key = `${r.team_id}-${r.slot}`;
+      const key = `${Number(r.team_id)}-${Number(r.slot)}`;
       rosterMap.set(key, r.golfer_name as string);
     }
 
@@ -63,7 +63,7 @@ export async function GET(
 
     // Build final lineup structure
     const lineups = teamRows.map((team) => {
-      const teamId = team.team_id as number;
+      const teamId = Number(team.team_id);
       const teamLineups = lineupsByTeam.get(teamId) || [];
 
       const lineup = teamLineups.map((l) => {
