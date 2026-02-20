@@ -58,18 +58,19 @@ export async function GET(request: NextRequest) {
     const team5Keys = Array.from(rosterMap.keys()).filter(k => k.startsWith('5-'));
     const team7Keys = Array.from(rosterMap.keys()).filter(k => k.startsWith('7-'));
 
+    const dbUrl = process.env.DATABASE_URL || '';
+    const urlHost = dbUrl.match(/@([^/]+)/)?.[1] || 'unknown';
+
     return NextResponse.json({
+      dbHost: urlHost,
+      timestamp: new Date().toISOString(),
       tournamentId,
       totalRows: lineupRows.length,
       distinctTeams: distinctTeams.map((t) => t.team_id),
       countPerTeam,
       teams5and7,
-      rawFirst10: lineupRows.slice(0, 10),
       team5Rows: lineupRows.filter((r) => Number(r.team_id) === 5),
       team7Rows: lineupRows.filter((r) => Number(r.team_id) === 7),
-      rosterTeams5and7: rosterRows,
-      team5RosterKeys: team5Keys,
-      team7RosterKeys: team7Keys,
     });
   } catch (error) {
     console.error('Debug error:', error);
