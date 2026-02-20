@@ -10,30 +10,31 @@ export async function GET(
   try {
     const { id } = await params;
 
-    // Query tournament, teams, lineups, and rosters separately to avoid JOIN issues
-    const [tournamentRows, teamRows, lineupRows, rosterRows] = await Promise.all([
-      sql`
-        SELECT tournament_id, name, deadline, status
-        FROM tournaments
-        WHERE tournament_id = ${id}
-      `,
-      sql`
-        SELECT team_id, team_name
-        FROM teams
-        ORDER BY team_id
-      `,
-      sql`
-        SELECT tournament_id, team_id, slot, fedex_points
-        FROM lineups
-        WHERE tournament_id = 'T002'
-        ORDER BY team_id, slot
-      `,
-      sql`
-        SELECT r.team_id, r.slot, g.name AS golfer_name
-        FROM rosters r
-        JOIN golfers g ON g.golfer_id = r.golfer_id
-      `,
-    ]);
+    // Query sequentially to debug the issue
+    const tournamentRows = await sql`
+      SELECT tournament_id, name, deadline, status
+      FROM tournaments
+      WHERE tournament_id = ${id}
+    `;
+
+    const teamRows = await sql`
+      SELECT team_id, team_name
+      FROM teams
+      ORDER BY team_id
+    `;
+
+    const lineupRows = await sql`
+      SELECT tournament_id, team_id, slot, fedex_points
+      FROM lineups
+      WHERE tournament_id = ${id}
+      ORDER BY team_id, slot
+    `;
+
+    const rosterRows = await sql`
+      SELECT r.team_id, r.slot, g.name AS golfer_name
+      FROM rosters r
+      JOIN golfers g ON g.golfer_id = r.golfer_id
+    `;
 
     if (tournamentRows.length === 0) {
       return NextResponse.json({ error: 'Tournament not found' }, { status: 404 });
