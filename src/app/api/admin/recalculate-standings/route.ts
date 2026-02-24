@@ -16,7 +16,10 @@ export async function POST() {
 
     // Update each team's standings
     const updates: { team_id: number; total: number }[] = [];
-    for (const [teamId, total] of teamTotals.entries()) {
+    const entries = Array.from(teamTotals.entries());
+    for (const entry of entries) {
+      const teamId = entry[0];
+      const total = entry[1];
       await sql`UPDATE standings SET total_points = ${total} WHERE team_id = ${teamId}`;
       updates.push({ team_id: teamId, total });
     }
