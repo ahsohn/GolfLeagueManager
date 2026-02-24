@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
+import { unstable_noStore as noStore } from 'next/cache';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ tournamentId: string }> }
 ) {
+  noStore(); // Prevent caching
   try {
     const { tournamentId: id } = await params;
 
@@ -94,7 +97,7 @@ export async function GET(
         lineupCount: lineupRows.length,
         timestamp: new Date().toISOString(),
         requestedId: id,
-        version: 'renamed-route-v2'
+        version: 'no-cache-v3'
       }
     });
   } catch (error) {
