@@ -113,5 +113,19 @@ export async function GET() {
 
 **Affected Routes:**
 - `src/app/api/tournaments/[tournamentId]/route.ts` - Tournament detail with lineups/scores
+- `src/app/api/standings/route.ts` - League standings
 
 **Workaround:** If caching issues persist, entering scores through the Admin Results page (`/admin/results/[id]`) uses the `/api/admin/results` endpoint which writes and reads in the same request, avoiding the cache issue.
+
+### Standings Table Sync
+
+**Problem:** When entering `fedex_points` directly in the `lineups` table via Neon console, the `standings` table totals are not updated. The leaderboard shows stale point totals.
+
+**Root Cause:** The `standings` table stores pre-calculated total points per team. It's only updated when using the Admin Results page (`/api/admin/results`), not when modifying the database directly.
+
+**Solution:** After entering scores directly in the database, call the recalculate endpoint:
+```bash
+curl -X POST https://fedexfantasy.ahsdesigns.com/api/admin/recalculate-standings
+```
+
+**Best Practice:** Always use the Admin Results page (`/admin/results/[tournamentId]`) to enter scores. It updates both `lineups.fedex_points` AND recalculates the `standings` table automatically.
