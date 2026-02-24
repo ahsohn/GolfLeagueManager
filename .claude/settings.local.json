@@ -21,7 +21,9 @@
       "Bash(curl:*)",
       "Bash(npx json:*)",
       "Bash(npm run dev:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "mcp__plugin_playwright_playwright__browser_console_messages",
+      "Bash(vercel:*)"
     ]
   }
 }
