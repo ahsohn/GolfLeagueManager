@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
+import { unstable_noStore as noStore } from 'next/cache';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function GET() {
+  noStore();
   try {
     // Query teams and standings separately to avoid LEFT JOIN type mismatch issues
     const [teamRows, standingsRows] = await Promise.all([
