@@ -88,3 +88,30 @@ Use a separate Neon database branch for testing. Switch via `DATABASE_URL` env v
 | POST | /api/waivers | Execute waiver swap |
 | POST | /api/admin/tournament | Create/update tournament |
 | POST | /api/admin/results | Enter tournament results |
+
+## Known Issues & Solutions
+
+### Vercel/Next.js API Route Caching
+
+**Problem:** Tournament data entered directly in the Neon database may not appear on the production site. The API returns stale/null values even though the database has correct data.
+
+**Root Cause:** Next.js on Vercel aggressively caches API route responses. Even with `export const dynamic = 'force-dynamic'`, responses can be cached. This has occurred multiple times when entering tournament scores directly in the database.
+
+**Solution:** API routes that read frequently-updated data must include ALL of these:
+
+```typescript
+import { unstable_noStore as noStore } from 'next/cache';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+export async function GET() {
+  noStore(); // Call at start of handler
+  // ... rest of handler
+}
+```
+
+**Affected Routes:**
+- `src/app/api/tournaments/[tournamentId]/route.ts` - Tournament detail with lineups/scores
+
+**Workaround:** If caching issues persist, entering scores through the Admin Results page (`/admin/results/[id]`) uses the `/api/admin/results` endpoint which writes and reads in the same request, avoiding the cache issue.
