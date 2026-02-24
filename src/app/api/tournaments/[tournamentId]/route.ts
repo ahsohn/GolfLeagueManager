@@ -5,10 +5,10 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ tournamentId: string }> }
 ) {
   try {
-    const { id } = await params;
+    const { tournamentId: id } = await params;
 
     // Query sequentially
     const tournamentRows = await sql`
@@ -94,7 +94,7 @@ export async function GET(
         lineupCount: lineupRows.length,
         timestamp: new Date().toISOString(),
         requestedId: id,
-        version: 'using-shared-db'
+        version: 'renamed-route-v2'
       }
     });
   } catch (error) {
