@@ -87,7 +87,9 @@ export async function GET(
       };
     });
 
-    return NextResponse.json({ tournament, lineups });
+    // Debug: include raw lineup data
+    const debugLineups = lineupRows.slice(0, 5);
+    return NextResponse.json({ tournament, lineups, debug: { rawLineups: debugLineups, lineupCount: lineupRows.length } });
   } catch (error) {
     console.error('Tournament detail error:', error);
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
