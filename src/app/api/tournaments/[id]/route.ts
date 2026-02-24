@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { neon } from '@neondatabase/serverless';
+import { sql } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,10 +10,7 @@ export async function GET(
   try {
     const { id } = await params;
 
-    // Create fresh neon client directly
-    const sql = neon(process.env.DATABASE_URL!);
-
-    // Query sequentially to debug the issue
+    // Query sequentially
     const tournamentRows = await sql`
       SELECT tournament_id, name, deadline, status
       FROM tournaments
@@ -26,11 +23,10 @@ export async function GET(
       ORDER BY team_id
     `;
 
-    // Use hardcoded string like debug endpoint does
     const lineupRows = await sql`
       SELECT tournament_id, team_id, slot, fedex_points
       FROM lineups
-      WHERE tournament_id = 'T002'
+      WHERE tournament_id = ${id}
       ORDER BY team_id, slot
     `;
 
@@ -97,7 +93,8 @@ export async function GET(
         rawLineups: debugLineups,
         lineupCount: lineupRows.length,
         timestamp: new Date().toISOString(),
-        requestedId: id
+        requestedId: id,
+        version: 'using-shared-db'
       }
     });
   } catch (error) {
