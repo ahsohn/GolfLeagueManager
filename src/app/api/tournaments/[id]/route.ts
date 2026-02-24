@@ -87,9 +87,18 @@ export async function GET(
       };
     });
 
-    // Debug: include raw lineup data
+    // Debug: include raw lineup data and timestamp
     const debugLineups = lineupRows.slice(0, 5);
-    return NextResponse.json({ tournament, lineups, debug: { rawLineups: debugLineups, lineupCount: lineupRows.length } });
+    return NextResponse.json({
+      tournament,
+      lineups,
+      debug: {
+        rawLineups: debugLineups,
+        lineupCount: lineupRows.length,
+        timestamp: new Date().toISOString(),
+        requestedId: id
+      }
+    });
   } catch (error) {
     console.error('Tournament detail error:', error);
     return NextResponse.json({ error: 'Server error' }, { status: 500 });

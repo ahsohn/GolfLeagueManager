@@ -23,7 +23,8 @@
       "Bash(npm run dev:*)",
       "Bash(node:*)",
       "mcp__plugin_playwright_playwright__browser_console_messages",
-      "Bash(vercel:*)"
+      "Bash(vercel:*)",
+      "Bash(powershell -Command \"try { \\(Invoke-WebRequest -Uri ''http://localhost:3000/api/tournaments/T002'' -UseBasicParsing\\).Content | ConvertFrom-Json | ConvertTo-Json -Depth 5 } catch { Write-Error $_}\")"
     ]
   }
 }
