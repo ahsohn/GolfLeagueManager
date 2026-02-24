@@ -1,25 +1,26 @@
 import { NextResponse } from 'next/server';
-import { neon } from '@neondatabase/serverless';
+import { sql } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const dbUrl = process.env.DATABASE_URL || 'NOT SET';
-  const match = dbUrl.match(/@([^/]+)/);
-  const host = match ? match[1] : 'unknown';
+  // Use shared db client like tournament route does
+  const allT002 = await sql`
+    SELECT team_id, slot, fedex_points
+    FROM lineups
+    WHERE tournament_id = 'T002'
+    ORDER BY team_id, slot
+  `;
 
-  const sql = neon(process.env.DATABASE_URL!);
-
-  // Test with hardcoded string
-  const hardcoded = await sql`SELECT team_id, slot, fedex_points FROM lineups WHERE tournament_id = 'T002' AND team_id = 11`;
-
-  // Test with parameterized query (like the tournament route does)
-  const tournamentId = 'T002';
-  const parameterized = await sql`SELECT team_id, slot, fedex_points FROM lineups WHERE tournament_id = ${tournamentId} AND team_id = 11`;
+  // Count nulls vs non-nulls
+  const nullCount = allT002.filter(r => r.fedex_points === null).length;
+  const nonNullCount = allT002.filter(r => r.fedex_points !== null).length;
 
   return NextResponse.json({
-    db_host: host,
-    hardcoded_query: hardcoded,
-    parameterized_query: parameterized
+    total_records: allT002.length,
+    null_count: nullCount,
+    non_null_count: nonNullCount,
+    sample_records: allT002.slice(0, 10),
+    timestamp: new Date().toISOString()
   });
 }
