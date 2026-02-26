@@ -13,9 +13,29 @@ interface LineupResult {
   fedex_points: number;
 }
 
+interface RosterSlot {
+  slot: number;
+  golfer_name: string;
+  times_used: number;
+}
+
+interface AdjustmentState {
+  isOpen: boolean;
+  teamId: number | null;
+  teamName: string;
+  oldSlot: number | null;
+  oldGolferName: string;
+  roster: RosterSlot[];
+  newSlot: number | null;
+  newPoints: number;
+  note: string;
+  loading: boolean;
+  error: string;
+}
+
 export default function ResultsPage() {
   const { id } = useParams();
-  const { isCommissioner, isLoading } = useAuth();
+  const { isCommissioner, isLoading, team } = useAuth();
   const router = useRouter();
 
   const [tournamentName, setTournamentName] = useState('');
@@ -25,6 +45,21 @@ export default function ResultsPage() {
   const [teamsWithoutLineups, setTeamsWithoutLineups] = useState<string[]>([]);
   const [applyingCarryover, setApplyingCarryover] = useState(false);
   const [carryoverMessage, setCarryoverMessage] = useState('');
+
+  // Lineup adjustment state
+  const [adjustment, setAdjustment] = useState<AdjustmentState>({
+    isOpen: false,
+    teamId: null,
+    teamName: '',
+    oldSlot: null,
+    oldGolferName: '',
+    roster: [],
+    newSlot: null,
+    newPoints: 0,
+    note: '',
+    loading: false,
+    error: '',
+  });
 
   useEffect(() => {
     if (!isLoading && !isCommissioner) {
@@ -126,6 +161,97 @@ export default function ResultsPage() {
     setSaving(false);
     setSuccess('Results saved!');
     setTimeout(() => setSuccess(''), 3000);
+  };
+
+  // Open adjustment modal and fetch roster
+  const openAdjustmentModal = async (entry: LineupResult) => {
+    setAdjustment({
+      isOpen: true,
+      teamId: entry.team_id,
+      teamName: entry.team_name,
+      oldSlot: entry.slot,
+      oldGolferName: entry.golfer_name,
+      roster: [],
+      newSlot: null,
+      newPoints: 0,
+      note: '',
+      loading: true,
+      error: '',
+    });
+
+    try {
+      const res = await fetch(`/api/roster/${entry.team_id}`);
+      const rosterData = await res.json();
+      setAdjustment((prev) => ({
+        ...prev,
+        roster: rosterData.map((r: { slot: number; golfer_name: string; times_used: number }) => ({
+          slot: r.slot,
+          golfer_name: r.golfer_name,
+          times_used: r.times_used,
+        })),
+        loading: false,
+      }));
+    } catch {
+      setAdjustment((prev) => ({
+        ...prev,
+        loading: false,
+        error: 'Failed to load roster',
+      }));
+    }
+  };
+
+  const closeAdjustmentModal = () => {
+    setAdjustment({
+      isOpen: false,
+      teamId: null,
+      teamName: '',
+      oldSlot: null,
+      oldGolferName: '',
+      roster: [],
+      newSlot: null,
+      newPoints: 0,
+      note: '',
+      loading: false,
+      error: '',
+    });
+  };
+
+  const handleAdjustmentSubmit = async () => {
+    if (!adjustment.newSlot || !team?.owner_email) {
+      setAdjustment((prev) => ({ ...prev, error: 'Please select a replacement slot' }));
+      return;
+    }
+
+    setAdjustment((prev) => ({ ...prev, loading: true, error: '' }));
+
+    try {
+      const res = await fetch('/api/admin/adjust-lineup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tournament_id: id,
+          team_id: adjustment.teamId,
+          old_slot: adjustment.oldSlot,
+          new_slot: adjustment.newSlot,
+          new_points: adjustment.newPoints,
+          admin_note: adjustment.note || null,
+          admin_email: team.owner_email,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        closeAdjustmentModal();
+        await fetchData();
+        setSuccess('Lineup adjusted successfully!');
+        setTimeout(() => setSuccess(''), 3000);
+      } else {
+        setAdjustment((prev) => ({ ...prev, loading: false, error: data.error }));
+      }
+    } catch {
+      setAdjustment((prev) => ({ ...prev, loading: false, error: 'Network error' }));
+    }
   };
 
   // Group results by team
@@ -263,8 +389,16 @@ export default function ResultsPage() {
                         {teamResults.indexOf(r) + 1}
                       </span>
                       <span className="font-medium text-charcoal">{r.golfer_name}</span>
+                      <span className="text-xs text-charcoal-light">(Slot {r.slot})</span>
                     </div>
                     <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => openAdjustmentModal(r)}
+                        className="px-2 py-1 text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded transition-colors"
+                        title="Adjust lineup"
+                      >
+                        Adjust
+                      </button>
                       <input
                         type="number"
                         value={r.fedex_points}
@@ -314,6 +448,143 @@ export default function ResultsPage() {
               </>
             )}
           </button>
+        )}
+
+        {/* Adjustment Modal */}
+        {adjustment.isOpen && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6 border-b border-cream-dark">
+                <h3 className="font-display text-xl font-bold text-charcoal">
+                  Adjust Lineup
+                </h3>
+                <p className="text-sm text-charcoal-light mt-1">
+                  {adjustment.teamName}
+                </p>
+              </div>
+
+              <div className="p-6 space-y-4">
+                {/* Current slot info */}
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-sm font-medium text-red-800">Removing:</p>
+                  <p className="text-red-700">
+                    Slot {adjustment.oldSlot}: {adjustment.oldGolferName}
+                  </p>
+                </div>
+
+                {/* Replacement slot selection */}
+                <div>
+                  <label className="block text-sm font-medium text-charcoal mb-2">
+                    Replace with slot:
+                  </label>
+                  {adjustment.loading ? (
+                    <div className="flex items-center justify-center py-4">
+                      <svg className="animate-spin h-6 w-6 text-masters-green" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {adjustment.roster
+                        .filter((slot) => slot.slot !== adjustment.oldSlot)
+                        .map((slot) => {
+                          const isMaxed = slot.times_used >= 8;
+                          const isSelected = adjustment.newSlot === slot.slot;
+                          return (
+                            <button
+                              key={slot.slot}
+                              onClick={() => !isMaxed && setAdjustment((prev) => ({ ...prev, newSlot: slot.slot }))}
+                              disabled={isMaxed}
+                              className={`w-full p-3 rounded-lg border-2 text-left transition-colors ${
+                                isMaxed
+                                  ? 'bg-gray-100 border-gray-200 cursor-not-allowed opacity-60'
+                                  : isSelected
+                                  ? 'bg-green-50 border-masters-green'
+                                  : 'bg-white border-cream-dark hover:border-masters-green/50'
+                              }`}
+                            >
+                              <div className="flex justify-between items-center">
+                                <span className={`font-medium ${isMaxed ? 'text-gray-500' : 'text-charcoal'}`}>
+                                  Slot {slot.slot}: {slot.golfer_name}
+                                </span>
+                                <span className={`text-xs px-2 py-1 rounded ${
+                                  isMaxed
+                                    ? 'bg-red-100 text-red-700'
+                                    : slot.times_used >= 6
+                                    ? 'bg-amber-100 text-amber-700'
+                                    : 'bg-green-100 text-green-700'
+                                }`}>
+                                  {slot.times_used}/8 uses
+                                </span>
+                              </div>
+                              {isMaxed && (
+                                <p className="text-xs text-red-600 mt-1">Max uses reached</p>
+                              )}
+                            </button>
+                          );
+                        })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Points input */}
+                {adjustment.newSlot && (
+                  <div>
+                    <label className="block text-sm font-medium text-charcoal mb-2">
+                      FedEx Points for new golfer:
+                    </label>
+                    <input
+                      type="number"
+                      value={adjustment.newPoints}
+                      onChange={(e) => setAdjustment((prev) => ({ ...prev, newPoints: parseInt(e.target.value) || 0 }))}
+                      className="w-full px-4 py-2 rounded-lg border-2 border-cream-dark focus:border-masters-green focus:outline-none transition-colors"
+                      placeholder="Enter points"
+                    />
+                  </div>
+                )}
+
+                {/* Note input */}
+                {adjustment.newSlot && (
+                  <div>
+                    <label className="block text-sm font-medium text-charcoal mb-2">
+                      Note (optional):
+                    </label>
+                    <input
+                      type="text"
+                      value={adjustment.note}
+                      onChange={(e) => setAdjustment((prev) => ({ ...prev, note: e.target.value }))}
+                      className="w-full px-4 py-2 rounded-lg border-2 border-cream-dark focus:border-masters-green focus:outline-none transition-colors"
+                      placeholder="e.g., Golfer WD, substituting per league rules"
+                    />
+                  </div>
+                )}
+
+                {/* Error message */}
+                {adjustment.error && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-700">{adjustment.error}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="p-6 border-t border-cream-dark flex gap-3">
+                <button
+                  onClick={closeAdjustmentModal}
+                  className="flex-1 px-4 py-2 rounded-lg border-2 border-cream-dark text-charcoal hover:bg-cream transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAdjustmentSubmit}
+                  disabled={!adjustment.newSlot || adjustment.loading}
+                  className="flex-1 px-4 py-2 rounded-lg bg-masters-green text-white font-medium hover:bg-masters-fairway transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {adjustment.loading ? 'Saving...' : 'Confirm Adjustment'}
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </main>
     </div>
