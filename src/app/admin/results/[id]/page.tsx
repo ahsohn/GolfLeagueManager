@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
@@ -10,6 +10,7 @@ interface LineupResult {
   team_name: string;
   slot: number;
   golfer_name: string;
+  espn_id: string | null;
   fedex_points: number;
 }
 
@@ -45,6 +46,8 @@ export default function ResultsPage() {
   const [teamsWithoutLineups, setTeamsWithoutLineups] = useState<string[]>([]);
   const [applyingCarryover, setApplyingCarryover] = useState(false);
   const [carryoverMessage, setCarryoverMessage] = useState('');
+  const [uploadError, setUploadError] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Lineup adjustment state
   const [adjustment, setAdjustment] = useState<AdjustmentState>({
@@ -79,7 +82,7 @@ export default function ResultsPage() {
 
     // Flatten lineups into result entries
     const flatResults: LineupResult[] = [];
-    data.lineups.forEach((team: { team_id: number; team_name: string; lineup: { slot: number; golfer_name: string; fedex_points: number | null }[] }) => {
+    data.lineups.forEach((team: { team_id: number; team_name: string; lineup: { slot: number; golfer_name: string; espn_id: string | null; fedex_points: number | null }[] }) => {
       if (team.lineup.length === 0) {
         missingTeams.push(team.team_name);
       } else {
@@ -89,6 +92,7 @@ export default function ResultsPage() {
             team_name: team.team_name,
             slot: l.slot,
             golfer_name: l.golfer_name,
+            espn_id: l.espn_id,
             fedex_points: l.fedex_points || 0,
           });
         });
@@ -161,6 +165,113 @@ export default function ResultsPage() {
     setSaving(false);
     setSuccess('Results saved!');
     setTimeout(() => setSuccess(''), 3000);
+  };
+
+  const handleDownloadCSV = () => {
+    const header = 'Team Name,Golfer Name,ESPN ID,FedEx Points';
+    const rows = results.map((r) =>
+      `"${r.team_name}","${r.golfer_name}","${r.espn_id || ''}",`
+    );
+    const csv = [header, ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const safeName = (tournamentName || 'tournament').replace(/[^a-zA-Z0-9]/g, '_');
+    a.download = `lineups_${safeName}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleUploadCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setUploadError('');
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      if (!text) {
+        setUploadError('Could not read file');
+        return;
+      }
+
+      const lines = text.split('\n').filter((line) => line.trim());
+      if (lines.length < 2) {
+        setUploadError('CSV must have a header row and at least one data row');
+        return;
+      }
+
+      // Skip header row
+      const dataLines = lines.slice(1);
+      const updatedResults = [...results];
+      let matchCount = 0;
+
+      for (const line of dataLines) {
+        // Parse CSV line handling quoted fields
+        const fields = parseCSVLine(line);
+        if (fields.length < 4) continue;
+
+        const csvTeamName = fields[0].trim();
+        const csvEspnId = fields[2].trim();
+        const csvPoints = fields[3].trim();
+
+        if (!csvPoints) continue;
+
+        const points = parseInt(csvPoints, 10);
+        if (isNaN(points)) continue;
+
+        // Match by team name + espn_id
+        const idx = updatedResults.findIndex(
+          (r) => r.team_name === csvTeamName && r.espn_id === csvEspnId
+        );
+
+        if (idx !== -1) {
+          updatedResults[idx] = { ...updatedResults[idx], fedex_points: points };
+          matchCount++;
+        }
+      }
+
+      if (matchCount === 0) {
+        setUploadError('No matching lineups found in CSV. Check team names and ESPN IDs.');
+      } else {
+        setResults(updatedResults);
+        setSuccess(`Loaded ${matchCount} result${matchCount > 1 ? 's' : ''} from CSV`);
+        setTimeout(() => setSuccess(''), 3000);
+      }
+    };
+    reader.readAsText(file);
+
+    // Reset file input so the same file can be re-uploaded
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // Parse a CSV line respecting quoted fields
+  const parseCSVLine = (line: string): string[] => {
+    const fields: string[] = [];
+    let current = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      if (char === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (char === ',' && !inQuotes) {
+        fields.push(current);
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    fields.push(current);
+    return fields;
   };
 
   // Open adjustment modal and fetch roster
@@ -318,6 +429,37 @@ export default function ResultsPage() {
             )}
           </div>
         </div>
+
+        {/* CSV Download/Upload */}
+        {results.length > 0 && (
+          <div className="flex flex-wrap items-center gap-3 mb-6">
+            <button
+              onClick={handleDownloadCSV}
+              className="btn btn-secondary text-sm py-2 px-4"
+            >
+              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Download Lineups CSV
+            </button>
+            <label className="btn btn-secondary text-sm py-2 px-4 cursor-pointer">
+              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+              Upload Results CSV
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv"
+                onChange={handleUploadCSV}
+                className="hidden"
+              />
+            </label>
+            {uploadError && (
+              <span className="text-sm text-red-600">{uploadError}</span>
+            )}
+          </div>
+        )}
 
         {/* Missing Lineups Warning */}
         {teamsWithoutLineups.length > 0 && (
