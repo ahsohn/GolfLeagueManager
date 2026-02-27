@@ -34,7 +34,7 @@ export async function GET(
     `;
 
     const rosterRows = await sql`
-      SELECT r.team_id, r.slot, g.name AS golfer_name
+      SELECT r.team_id, r.slot, g.name AS golfer_name, g.espn_id
       FROM rosters r
       JOIN golfers g ON g.golfer_id = r.golfer_id
     `;
@@ -46,10 +46,10 @@ export async function GET(
     const tournament = tournamentRows[0];
 
     // Create lookup maps
-    const rosterMap = new Map<string, string>();
+    const rosterMap = new Map<string, { golfer_name: string; espn_id: string | null }>();
     for (const r of rosterRows) {
       const key = `${Number(r.team_id)}-${Number(r.slot)}`;
-      rosterMap.set(key, r.golfer_name as string);
+      rosterMap.set(key, { golfer_name: r.golfer_name as string, espn_id: (r.espn_id as string) || null });
     }
 
     // Group lineups by team
@@ -71,10 +71,11 @@ export async function GET(
       const teamLineups = lineupsByTeam.get(teamId) || [];
 
       const lineup = teamLineups.map((l) => {
-        const golferName = rosterMap.get(`${teamId}-${l.slot}`) || 'Unknown';
+        const rosterEntry = rosterMap.get(`${teamId}-${l.slot}`);
         return {
           slot: l.slot,
-          golfer_name: golferName,
+          golfer_name: rosterEntry?.golfer_name || 'Unknown',
+          espn_id: rosterEntry?.espn_id || null,
           fedex_points: l.fedex_points,
         };
       });
