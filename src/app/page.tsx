@@ -135,8 +135,8 @@ export default function HomePage() {
             <table className="standings-table">
               <thead>
                 <tr>
-                  <th className="w-20">Rank</th>
-                  <th>Team</th>
+                  <th className="w-20 text-left">Rank</th>
+                  <th className="text-left">Team</th>
                   <th className="text-right">Points</th>
                 </tr>
               </thead>
