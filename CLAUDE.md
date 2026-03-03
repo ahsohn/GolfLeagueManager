@@ -85,7 +85,9 @@ Use a separate Neon database branch for testing. Switch via `DATABASE_URL` env v
 | GET | /api/lineup | Get lineup state |
 | POST | /api/lineup | Submit/update lineup (slots) |
 | GET | /api/waivers/available | Available golfers |
+| GET | /api/waivers/history | Waiver transaction history |
 | POST | /api/waivers | Execute waiver swap |
+| GET | /api/team/[teamId] | Public team roster view |
 | POST | /api/admin/tournament | Create/update tournament |
 | POST | /api/admin/results | Enter tournament results |
 
@@ -111,9 +113,15 @@ export async function GET() {
 }
 ```
 
-**Affected Routes:**
-- `src/app/api/tournaments/[tournamentId]/route.ts` - Tournament detail with lineups/scores
+**Affected Routes (all GET endpoints reading frequently-updated data):**
 - `src/app/api/standings/route.ts` - League standings
+- `src/app/api/tournaments/route.ts` - Tournament list
+- `src/app/api/tournaments/[tournamentId]/route.ts` - Tournament detail with lineups/scores
+- `src/app/api/roster/[teamId]/route.ts` - Team roster (changes with waivers)
+- `src/app/api/lineup/route.ts` - Lineup state
+- `src/app/api/waivers/available/route.ts` - Available golfers for waivers
+- `src/app/api/waivers/history/route.ts` - Waiver transaction history
+- `src/app/api/team/[teamId]/route.ts` - Public team roster view
 
 **Workaround:** If caching issues persist, entering scores through the Admin Results page (`/admin/results/[id]`) uses the `/api/admin/results` endpoint which writes and reads in the same request, avoiding the cache issue.
 
