@@ -45,6 +45,21 @@ export async function POST(request: NextRequest) {
 
     const addGolferName = addGolferRows[0].name as string;
 
+    // Check if golfer was originally on this team - must return to original slot
+    const originalSlotRows = await sql`
+      SELECT original_slot FROM slot_history
+      WHERE team_id = ${teamId} AND golfer_id = ${addGolferId}
+    `;
+    if (originalSlotRows.length > 0) {
+      const originalSlot = originalSlotRows[0].original_slot as number;
+      if (slot !== originalSlot) {
+        return NextResponse.json(
+          { error: `${addGolferName} was originally in slot ${originalSlot} and must return to that slot` },
+          { status: 400 }
+        );
+      }
+    }
+
     // Get drop golfer name for the log
     const dropGolferRows = await sql`SELECT name FROM golfers WHERE golfer_id = ${dropGolferId}`;
     const dropGolferName = (dropGolferRows[0]?.name as string) ?? 'Unknown';
