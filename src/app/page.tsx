@@ -154,7 +154,12 @@ export default function HomePage() {
                       {i + 1}
                     </td>
                     <td className="font-medium">
-                      {s.team_name}
+                      <Link
+                        href={`/team/${s.team_id}`}
+                        className="hover:text-masters-green transition-colors"
+                      >
+                        {s.team_name}
+                      </Link>
                       {s.team_id === team.team_id && (
                         <span className="ml-2 text-xs bg-gold/20 text-bronze px-2 py-0.5 rounded-full">
                           You
@@ -195,6 +200,18 @@ export default function HomePage() {
               </svg>
             </div>
             <span className="font-medium text-charcoal">Past Results</span>
+          </Link>
+
+          <Link
+            href="/waivers/history"
+            className="card hover:shadow-golf-lg transition-all group cursor-pointer text-center py-6"
+          >
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cream-dark to-sand mx-auto mb-3 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <svg className="w-6 h-6 text-masters-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+            </div>
+            <span className="font-medium text-charcoal">Waiver History</span>
           </Link>
 
           {isCommissioner && (
