@@ -24,7 +24,22 @@
       "Bash(node:*)",
       "mcp__plugin_playwright_playwright__browser_console_messages",
       "Bash(vercel:*)",
-      "Bash(powershell -Command \"try { \\(Invoke-WebRequest -Uri ''http://localhost:3000/api/tournaments/T002'' -UseBasicParsing\\).Content | ConvertFrom-Json | ConvertTo-Json -Depth 5 } catch { Write-Error $_}\")"
+      "Bash(powershell -Command \"try { \\(Invoke-WebRequest -Uri ''http://localhost:3000/api/tournaments/T002'' -UseBasicParsing\\).Content | ConvertFrom-Json | ConvertTo-Json -Depth 5 } catch { Write-Error $_}\")",
+      "Bash(dir /s)",
+      "Skill(superpowers:writing-plans)",
+      "Skill(superpowers:subagent-driven-development)",
+      "Bash(git rev-parse:*)",
+      "Bash(pip install:*)",
+      "Bash(python:*)",
+      "Bash(git -C \"C:\\\\Users\\\\ahsoh\\\\Documents\\\\VibeCoding\\\\gscraper\" status)",
+      "Bash(git -C \"C:\\\\Users\\\\ahsoh\\\\Documents\\\\VibeCoding\\\\gscraper\" diff requirements.txt)",
+      "Bash(git -C \"C:\\\\Users\\\\ahsoh\\\\Documents\\\\VibeCoding\\\\gscraper\" log --oneline -5)",
+      "Bash(git -C \"C:\\\\Users\\\\ahsoh\\\\Documents\\\\VibeCoding\\\\gscraper\" add requirements.txt)",
+      "Bash(git -C \"C:\\\\Users\\\\ahsoh\\\\Documents\\\\VibeCoding\\\\gscraper\" commit -m \"$\\(cat <<''EOF''\nchore: add rapidfuzz and pytest dependencies\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git -C \"C:\\\\Users\\\\ahsoh\\\\Documents\\\\VibeCoding\\\\gscraper\" log --oneline -3)",
+      "Bash(pytest:*)",
+      "Bash(DATABASE_URL=\"postgresql://neondb_owner:npg_0GJtSOcYKvT9@ep-proud-star-aild741h-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require\" npx tsx:*)",
+      "Bash(DATABASE_URL=\"postgresql://neondb_owner:npg_0GJtSOcYKvT9@ep-proud-star-aild741h-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require\" npx tsx -e:*)"
     ]
   }
 }
