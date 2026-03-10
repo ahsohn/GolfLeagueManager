@@ -49,7 +49,7 @@ The league uses **slot-based** tracking, not golfer-based:
 - Each team has 10 slots (1-10) from the draft
 - Lineups select 4 slots per tournament
 - Each slot can be used max 8 times per season
-- Waivers swap the golfer in a slot (times_used resets to 0)
+- Waivers swap the golfer in a slot (times_used persists since it tracks slot usage)
 
 ### Environment Variables
 ```

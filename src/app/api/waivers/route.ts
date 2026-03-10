@@ -65,9 +65,10 @@ export async function POST(request: NextRequest) {
     const dropGolferName = (dropGolferRows[0]?.name as string) ?? 'Unknown';
 
     // Update roster and log waiver
+    // Note: times_used tracks SLOT usage, not golfer usage, so it persists through waivers
     await sql`
       UPDATE rosters
-      SET golfer_id = ${addGolferId}, times_used = 0
+      SET golfer_id = ${addGolferId}
       WHERE team_id = ${teamId} AND slot = ${slot}
     `;
     await sql`
