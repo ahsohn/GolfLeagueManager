@@ -18,8 +18,8 @@ export async function GET() {
         tm.team_name,
         a.old_slot,
         a.new_slot,
-        r_old.golfer_name as old_golfer_name,
-        r_new.golfer_name as new_golfer_name,
+        g_old.name as old_golfer_name,
+        g_new.name as new_golfer_name,
         a.old_points,
         a.new_points,
         a.note
@@ -27,7 +27,9 @@ export async function GET() {
       LEFT JOIN tournaments t ON a.tournament_id = t.tournament_id
       LEFT JOIN teams tm ON a.team_id = tm.team_id
       LEFT JOIN rosters r_old ON a.team_id = r_old.team_id AND a.old_slot = r_old.slot
+      LEFT JOIN golfers g_old ON r_old.golfer_id = g_old.golfer_id
       LEFT JOIN rosters r_new ON a.team_id = r_new.team_id AND a.new_slot = r_new.slot
+      LEFT JOIN golfers g_new ON r_new.golfer_id = g_new.golfer_id
       ORDER BY a.timestamp DESC
     `;
 
