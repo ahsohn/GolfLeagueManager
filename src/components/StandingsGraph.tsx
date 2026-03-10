@@ -137,7 +137,7 @@ export default function StandingsGraph() {
             {data.teams.map(team => (
               <Line
                 key={team.team_id}
-                type="monotone"
+                type="linear"
                 dataKey={`team_${team.team_id}`}
                 stroke={team.color}
                 strokeWidth={selectedTeam === null || selectedTeam === team.team_id ? 2 : 1}
