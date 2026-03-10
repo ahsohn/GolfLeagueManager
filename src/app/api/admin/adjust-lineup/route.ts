@@ -80,8 +80,14 @@ export async function POST(request: NextRequest) {
     const timestamp = new Date().toISOString();
     const adminNoteText = note ? `Admin adjustment: ${note}` : 'Admin adjustment';
 
-    // Run all updates in a transaction
-    await sql.transaction([
+    // Determine if the old slot had been scored (fedex_points not null).
+    // If it was scored, times_used was already incremented for this tournament,
+    // so we need to decrement it. If not scored, times_used was never incremented,
+    // so we should NOT decrement it.
+    const oldSlotWasScored = oldPoints !== null;
+
+    // Build transaction statements
+    const transactionStatements = [
       // Delete old lineup entry
       sql`
         DELETE FROM lineups
@@ -94,13 +100,7 @@ export async function POST(request: NextRequest) {
         INSERT INTO lineups (tournament_id, team_id, slot, fedex_points, admin_note)
         VALUES (${tournamentId}, ${teamId}, ${newSlot}, ${newPoints}, ${adminNoteText})
       `,
-      // Decrement old slot times_used
-      sql`
-        UPDATE rosters
-        SET times_used = times_used - 1
-        WHERE team_id = ${teamId} AND slot = ${oldSlot}
-      `,
-      // Increment new slot times_used
+      // Increment new slot times_used (new slot is being used for this tournament)
       sql`
         UPDATE rosters
         SET times_used = times_used + 1
@@ -112,7 +112,21 @@ export async function POST(request: NextRequest) {
         (timestamp, tournament_id, team_id, old_slot, new_slot, old_points, new_points, note, admin_email)
         VALUES (${timestamp}, ${tournamentId}, ${teamId}, ${oldSlot}, ${newSlot}, ${oldPoints}, ${newPoints}, ${note}, ${normalizedAdminEmail})
       `,
-    ]);
+    ];
+
+    // Only decrement old slot's times_used if it was already scored
+    if (oldSlotWasScored) {
+      transactionStatements.push(
+        sql`
+          UPDATE rosters
+          SET times_used = times_used - 1
+          WHERE team_id = ${teamId} AND slot = ${oldSlot}
+        `
+      );
+    }
+
+    // Run all updates in a transaction
+    await sql.transaction(transactionStatements);
 
     // Recalculate standings
     const allLineups = await sql`SELECT team_id, fedex_points FROM lineups`;
