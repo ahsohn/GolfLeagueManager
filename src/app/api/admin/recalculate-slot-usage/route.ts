@@ -29,8 +29,7 @@ export async function GET() {
 
     // Find discrepancies
     const discrepancies = calculated.filter(
-      (row: { current_times_used: number; calculated_times_used: number }) =>
-        row.current_times_used !== row.calculated_times_used
+      (row) => row.current_times_used !== row.calculated_times_used
     );
 
     return NextResponse.json({
