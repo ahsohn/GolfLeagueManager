@@ -14,6 +14,8 @@ interface AdjustmentEntry {
   team_name: string;
   old_slot: number;
   new_slot: number;
+  old_golfer_name: string | null;
+  new_golfer_name: string | null;
   old_points: number | null;
   new_points: number | null;
   note: string | null;
@@ -187,14 +189,19 @@ export default function AdjustmentsPage() {
                         </div>
 
                         <div className="ml-20 flex flex-wrap items-center gap-3 text-sm">
-                          {/* Slot Change */}
+                          {/* Slot Change with Golfer Names */}
                           <div className="flex items-center gap-1">
-                            <span className="text-charcoal-light">Slot</span>
-                            <span className="font-medium text-red-600">{entry.old_slot}</span>
+                            <span className="font-medium text-red-600">
+                              {entry.old_golfer_name || `Slot ${entry.old_slot}`}
+                            </span>
+                            <span className="text-charcoal-light text-xs">(#{entry.old_slot})</span>
                             <svg className="w-4 h-4 text-charcoal-light" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                             </svg>
-                            <span className="font-medium text-masters-green">{entry.new_slot}</span>
+                            <span className="font-medium text-masters-green">
+                              {entry.new_golfer_name || `Slot ${entry.new_slot}`}
+                            </span>
+                            <span className="text-charcoal-light text-xs">(#{entry.new_slot})</span>
                           </div>
 
                           {/* Points Change (if applicable) */}

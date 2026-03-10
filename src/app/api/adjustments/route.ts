@@ -18,12 +18,16 @@ export async function GET() {
         tm.team_name,
         a.old_slot,
         a.new_slot,
+        r_old.golfer_name as old_golfer_name,
+        r_new.golfer_name as new_golfer_name,
         a.old_points,
         a.new_points,
         a.note
       FROM admin_adjustments a
       LEFT JOIN tournaments t ON a.tournament_id = t.tournament_id
       LEFT JOIN teams tm ON a.team_id = tm.team_id
+      LEFT JOIN rosters r_old ON a.team_id = r_old.team_id AND a.old_slot = r_old.slot
+      LEFT JOIN rosters r_new ON a.team_id = r_new.team_id AND a.new_slot = r_new.slot
       ORDER BY a.timestamp DESC
     `;
 

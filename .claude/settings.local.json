@@ -39,7 +39,9 @@
       "Bash(git -C \"C:\\\\Users\\\\ahsoh\\\\Documents\\\\VibeCoding\\\\gscraper\" log --oneline -3)",
       "Bash(pytest:*)",
       "Bash(DATABASE_URL=\"postgresql://neondb_owner:npg_0GJtSOcYKvT9@ep-proud-star-aild741h-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require\" npx tsx:*)",
-      "Bash(DATABASE_URL=\"postgresql://neondb_owner:npg_0GJtSOcYKvT9@ep-proud-star-aild741h-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require\" npx tsx -e:*)"
+      "Bash(DATABASE_URL=\"postgresql://neondb_owner:npg_0GJtSOcYKvT9@ep-proud-star-aild741h-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require\" npx tsx -e:*)",
+      "Bash(npm install:*)",
+      "Skill(superpowers:brainstorming)"
     ]
   }
 }
