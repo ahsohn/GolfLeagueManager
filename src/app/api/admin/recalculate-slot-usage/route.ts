@@ -52,7 +52,7 @@ export async function POST() {
 
   try {
     // Update all rosters with correct times_used calculated from lineups
-    const result = await sql`
+    await sql`
       UPDATE rosters r
       SET times_used = COALESCE(
         (SELECT COUNT(*)
