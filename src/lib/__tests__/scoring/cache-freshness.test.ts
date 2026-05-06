@@ -40,7 +40,7 @@ describe('partitionByCacheFreshness', () => {
       cache,
       now,
     );
-    expect([...fresh.keys()]).toEqual(['fresh-id']);
+    expect(Array.from(fresh.keys())).toEqual(['fresh-id']);
     expect(stale).toEqual(['stale-id']);
     expect(missing).toEqual(['missing-id']);
   });

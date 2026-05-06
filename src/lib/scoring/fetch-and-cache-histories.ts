@@ -32,7 +32,7 @@ export async function fetchAndCacheHistories(
 
   const { fresh, stale, missing } = partitionByCacheFreshness(espnIds, cache, now);
 
-  for (const [id, payload] of fresh) result.set(id, payload);
+  fresh.forEach((payload, id) => result.set(id, payload));
 
   // Refetch stale entries; on failure, fall back to the stale payload.
   for (const id of stale) {
