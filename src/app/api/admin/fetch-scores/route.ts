@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Tournament not found' }, { status: 404 });
     }
     const tournament = tournamentRows[0];
-    if (!tournament.espn_event_id || !tournament.season) {
+    if (!tournament.espn_event_id || tournament.season == null) {
       return NextResponse.json(
         { error: 'Tournament has no ESPN event id mapped. Map it on /admin/backfill-events first.' },
         { status: 400 },
@@ -42,6 +42,9 @@ export async function POST(request: NextRequest) {
     const espnEventId = String(tournament.espn_event_id);
     const season = Number(tournament.season);
 
+    // Inner JOINs assume referential integrity (FK constraints enforce it).
+    // A lineup whose roster/golfer rows have been deleted would silently disappear here;
+    // in practice the schema prevents that, so we don't add LEFT JOINs and null-handling.
     // Load lineup rows joined with roster + golfer for names and espn_ids.
     const lineupRows = await sql`
       SELECT
@@ -68,6 +71,8 @@ export async function POST(request: NextRequest) {
 
     const io: CacheIO = {
       async cacheRead(ids, s) {
+        // fetchAndCacheHistories guards against empty ids before calling here,
+        // but keep the check defensive in case CacheIO is reused elsewhere.
         if (ids.length === 0) return [];
         const rows = await sql`
           SELECT espn_id, season, fetched_at, payload

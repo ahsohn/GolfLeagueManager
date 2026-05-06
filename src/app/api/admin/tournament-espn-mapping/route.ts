@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { NeonDbError } from '@neondatabase/serverless';
 import { sql } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {
     const { tournament_id, espn_event_id, season } = await request.json();
 
-    if (!tournament_id || !espn_event_id || !Number.isInteger(season)) {
+    if (!tournament_id || !espn_event_id || !Number.isInteger(season) || season < 2000 || season > 2100) {
       return NextResponse.json(
-        { error: 'tournament_id, espn_event_id, and integer season required' },
+        { error: 'tournament_id, espn_event_id, and integer season (2000-2100) required' },
         { status: 400 },
       );
     }
@@ -24,8 +25,8 @@ export async function POST(request: NextRequest) {
     `;
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    if (typeof error?.message === 'string' && error.message.includes('duplicate key')) {
+  } catch (error: unknown) {
+    if (error instanceof NeonDbError && error.code === '23505') {
       return NextResponse.json(
         { error: 'That ESPN event id is already mapped to another tournament' },
         { status: 409 },
