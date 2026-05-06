@@ -34,6 +34,9 @@ export async function fetchAndCacheHistories(
 
   fresh.forEach((payload, id) => result.set(id, payload));
 
+  // Sequential awaits are intentional — ESPNClient enforces its own rate-limit
+  // (delayMs) between requests. Promise.all would bypass that and risk 429/403
+  // from ESPN. Do not refactor to parallel without changing the rate-limit policy.
   // Refetch stale entries; on failure, fall back to the stale payload.
   for (const id of stale) {
     try {
@@ -42,6 +45,8 @@ export async function fetchAndCacheHistories(
       await io.cacheUpsert(id, season, fetched);
     } catch {
       // fall back to stale; do not bubble — partial success is fine.
+      // cache.get(id) is guaranteed non-null here: id came from the stale list,
+      // which only contains keys already present in the cache map.
       const stalePayload = cache.get(id)!.payload;
       result.set(id, stalePayload);
     }

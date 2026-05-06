@@ -76,6 +76,19 @@ describe('fetchAndCacheHistories', () => {
     expect(cacheUpsert).not.toHaveBeenCalled();
   });
 
+  it('returns an empty map without calling io when given empty ids', async () => {
+    const cacheRead = jest.fn();
+    const cacheUpsert = jest.fn();
+    const client = { getPlayerHistory: jest.fn() };
+
+    const result = await fetchAndCacheHistories([], 2026, { cacheRead, cacheUpsert }, client as any, now);
+
+    expect(result.size).toBe(0);
+    expect(cacheRead).not.toHaveBeenCalled();
+    expect(client.getPlayerHistory).not.toHaveBeenCalled();
+    expect(cacheUpsert).not.toHaveBeenCalled();
+  });
+
   it('handles a mix of cache hit, miss, and stale in one call', async () => {
     const histA = makeHistory('a', 2026);
     const histB = makeHistory('b', 2026);
