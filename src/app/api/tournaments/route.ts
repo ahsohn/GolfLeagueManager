@@ -9,7 +9,7 @@ export async function GET() {
   noStore();
   try {
     const rows = await sql`
-      SELECT tournament_id, name, deadline, status
+      SELECT tournament_id, name, deadline, status, espn_event_id, season
       FROM tournaments
       ORDER BY deadline DESC
     `;
