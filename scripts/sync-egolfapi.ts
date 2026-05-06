@@ -7,7 +7,7 @@
 // upstream git SHA in _VERSION.txt.
 
 import { execSync } from 'node:child_process';
-import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 const FILES = ['client', 'endpoints', 'parsers', 'normalize', 'types', 'index'] as const;
