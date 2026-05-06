@@ -86,4 +86,33 @@ describe('mergeProposedResults', () => {
     expect(result.proposed.find((r) => r.espn_id === '9478')!.current_fedex_points).toBeNull();
     expect(result.proposed.find((r) => r.espn_id === '5467')!.current_fedex_points).toBe(0);
   });
+
+  it('populates position_display for missed_cut rows', () => {
+    const mcHistory: PlayerSeasonHistory = {
+      player: playerA, season: 2026,
+      results: [{ player: playerA, eventId: '401002', eventName: 'Genesis', positionDisplay: 'MC', fedexPoints: 0 }],
+    };
+    const result = mergeProposedResults(
+      [lineups[0]],
+      new Map([['9478', mcHistory]]),
+      '401002',
+    );
+    expect(result.proposed[0].status).toBe('missed_cut');
+    expect(result.proposed[0].position_display).toBe('MC');
+    expect(result.proposed[0].fetched_fedex_points).toBe(0);
+  });
+
+  it('populates position_display for withdrew rows', () => {
+    const wdHistory: PlayerSeasonHistory = {
+      player: playerA, season: 2026,
+      results: [{ player: playerA, eventId: '401002', eventName: 'Genesis', positionDisplay: 'WD', fedexPoints: 0 }],
+    };
+    const result = mergeProposedResults(
+      [lineups[0]],
+      new Map([['9478', wdHistory]]),
+      '401002',
+    );
+    expect(result.proposed[0].status).toBe('withdrew');
+    expect(result.proposed[0].position_display).toBe('WD');
+  });
 });

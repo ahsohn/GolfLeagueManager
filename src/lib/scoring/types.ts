@@ -10,6 +10,11 @@ export type LineupResultStatus =
   | 'manual_entry'     // roster has no espn_id — must be entered by hand
   | 'fetch_failed';    // network/parse error fetching this player's history
 
+// Derived summary shape — stays in sync with LineupResultStatus automatically.
+export type SummaryCountsByStatus = {
+  total: number;
+} & { [K in LineupResultStatus]: number };
+
 // One row in the proposal returned by /api/admin/fetch-scores.
 // Mirrors the shape consumed by /admin/results/[id] page state.
 export interface ProposedResult {
@@ -25,21 +30,29 @@ export interface ProposedResult {
   message: string | null;              // optional human-readable note
 }
 
+// Input row shape for mergeProposedResults.
+export interface LineupRow {
+  team_id: number;
+  team_name: string;
+  slot: number;
+  golfer_name: string;
+  espn_id: string | null;
+  fedex_points: number | null;
+}
+
+// Return type of mergeProposedResults.
+export interface MergeResult {
+  proposed: ProposedResult[];
+  summary: SummaryCountsByStatus;
+}
+
 export interface FetchScoresResponse {
   tournament_id: string;
   espn_event_id: string;
   season: number;
   proposed: ProposedResult[];
   // Summary counts for the banner UI; redundant with `proposed` but cheap.
-  summary: {
-    total: number;
-    played: number;
-    missed_cut: number;
-    withdrew: number;
-    did_not_play: number;
-    manual_entry: number;
-    fetch_failed: number;
-  };
+  summary: SummaryCountsByStatus;
 }
 
 // Map of espn_id -> PlayerSeasonHistory (or null when fetch failed).

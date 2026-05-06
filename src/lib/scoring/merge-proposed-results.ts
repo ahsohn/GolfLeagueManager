@@ -1,30 +1,17 @@
 import { classifyLineupResult } from './classify-lineup-result';
 import { findEventResult } from './find-event-result';
-import type { HistoryByEspnId, LineupResultStatus, ProposedResult } from './types';
+import type {
+  HistoryByEspnId,
+  LineupResultStatus,
+  LineupRow,
+  MergeResult,
+  ProposedResult,
+  SummaryCountsByStatus,
+} from './types';
 
-export interface LineupRow {
-  team_id: number;
-  team_name: string;
-  slot: number;
-  golfer_name: string;
-  espn_id: string | null;
-  fedex_points: number | null;
-}
+export type { LineupRow, MergeResult };
 
-export interface MergeResult {
-  proposed: ProposedResult[];
-  summary: {
-    total: number;
-    played: number;
-    missed_cut: number;
-    withdrew: number;
-    did_not_play: number;
-    manual_entry: number;
-    fetch_failed: number;
-  };
-}
-
-const ZERO_SUMMARY = (): MergeResult['summary'] => ({
+const ZERO_SUMMARY = (): SummaryCountsByStatus => ({
   total: 0,
   played: 0,
   missed_cut: 0,
