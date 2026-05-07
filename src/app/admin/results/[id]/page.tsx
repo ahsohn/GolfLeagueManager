@@ -531,7 +531,7 @@ export default function ResultsPage() {
             </div>
             {summary && (
               <p className="text-sm text-charcoal-light">
-                Fetched {summary.played} of {summary.total} results
+                Fetched {summary.played + summary.missed_cut + summary.withdrew} of {summary.total} results
                 {summary.did_not_play > 0 && ` — ${summary.did_not_play} did not play`}
                 {summary.missed_cut > 0 && ` — ${summary.missed_cut} missed cut`}
                 {summary.withdrew > 0 && ` — ${summary.withdrew} withdrew`}
