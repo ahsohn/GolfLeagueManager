@@ -350,7 +350,7 @@ export default function ResultsPage() {
     }
   };
 
-  // Open adjustment modal and fetch roster
+  // Open adjustment modal and fetch roster (+ ESPN status when available)
   const openAdjustmentModal = async (entry: LineupResult) => {
     const slotsInLineup = new Set(
       results.filter((r) => r.team_id === entry.team_id).map((r) => r.slot),
@@ -368,26 +368,48 @@ export default function ResultsPage() {
       loading: true,
       error: '',
       slotsInLineup,
-      teamProposal: new Map(
-        Array.from(proposalByKey.values())
-          .filter((p) => p.team_id === entry.team_id)
-          .map((p) => [p.slot, p]),
-      ),
+      teamProposal: new Map(),
     });
 
     try {
-      const res = await fetch(`/api/roster/${entry.team_id}`);
-      const rosterData = await res.json();
+      const rosterFetch = fetch(`/api/roster/${entry.team_id}`);
+      const statusFetch = tournamentEspnEventId
+        ? fetch('/api/admin/team-roster-status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ team_id: entry.team_id, tournament_id: id }),
+          })
+        : null;
+
+      const [rosterRes, statusRes] = await Promise.all([rosterFetch, statusFetch ?? Promise.resolve(null)]);
+
+      const rosterData = await rosterRes.json();
+      const roster = rosterData.map((r: { slot: number; golfer_name: string; times_used: number }) => ({
+        slot: r.slot,
+        golfer_name: r.golfer_name,
+        times_used: r.times_used,
+      }));
+
+      let teamProposal: Map<number, ProposedResult> = new Map();
+      if (statusRes !== null) {
+        if (statusRes.ok) {
+          const statusData = await statusRes.json();
+          teamProposal = new Map(
+            (statusData.roster_status as ProposedResult[]).map((p) => [p.slot, p]),
+          );
+        } else {
+          console.error('team-roster-status fetch failed:', statusRes.status);
+        }
+      }
+
       setAdjustment((prev) => ({
         ...prev,
-        roster: rosterData.map((r: { slot: number; golfer_name: string; times_used: number }) => ({
-          slot: r.slot,
-          golfer_name: r.golfer_name,
-          times_used: r.times_used,
-        })),
+        roster,
+        teamProposal,
         loading: false,
       }));
-    } catch {
+    } catch (err) {
+      console.error('openAdjustmentModal fetch error:', err);
       setAdjustment((prev) => ({
         ...prev,
         loading: false,
