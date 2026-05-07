@@ -7,24 +7,29 @@ import { useAuth } from '@/contexts/AuthContext';
 import { EspnEventPicker } from '@/components/EspnEventPicker';
 import { Tournament } from '@/types';
 
-interface Pending extends Tournament {}
-
 export default function BackfillEventsPage() {
   const { isCommissioner, isLoading } = useAuth();
   const router = useRouter();
-  const [pending, setPending] = useState<Pending[]>([]);
+  const [pending, setPending] = useState<Tournament[]>([]);
   const [savingId, setSavingId] = useState<string>('');
   const [error, setError] = useState<{ [id: string]: string }>({});
   const [selection, setSelection] = useState<{ [id: string]: { espnEventId: string; season: number } | null }>({});
+  const [reloadError, setReloadError] = useState('');
 
   useEffect(() => {
     if (!isLoading && !isCommissioner) router.push('/');
   }, [isLoading, isCommissioner, router]);
 
   const reload = useCallback(async () => {
-    const res = await fetch('/api/tournaments');
-    const data: Tournament[] = await res.json();
-    setPending(data.filter((t) => !t.espn_event_id));
+    try {
+      const res = await fetch('/api/tournaments');
+      if (!res.ok) throw new Error('Failed to load tournaments');
+      const data: Tournament[] = await res.json();
+      setPending(data.filter((t) => !t.espn_event_id));
+      setReloadError('');
+    } catch (e) {
+      setReloadError(e instanceof Error ? e.message : 'Failed to load tournaments');
+    }
   }, []);
 
   useEffect(() => {
@@ -77,6 +82,11 @@ export default function BackfillEventsPage() {
             ? 'All tournaments have an ESPN event mapped.'
             : `${pending.length} tournament${pending.length === 1 ? '' : 's'} missing an ESPN event id.`}
         </p>
+        {reloadError && (
+          <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">
+            {reloadError}
+          </div>
+        )}
 
         <div className="space-y-4">
           {pending.map((t) => {
