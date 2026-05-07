@@ -35,6 +35,7 @@ interface AdjustmentState {
   error: string;
   slotsInLineup: Set<number>;
   teamProposal: Map<number, ProposedResult>;
+  statusFetchFailed: boolean;
 }
 
 function StatusBadge({ status, positionDisplay }: { status: LineupResultStatus; positionDisplay?: string | null }) {
@@ -90,6 +91,7 @@ export default function ResultsPage() {
     error: '',
     slotsInLineup: new Set(),
     teamProposal: new Map(),
+    statusFetchFailed: false,
   });
 
   useEffect(() => {
@@ -369,6 +371,7 @@ export default function ResultsPage() {
       error: '',
       slotsInLineup,
       teamProposal: new Map(),
+      statusFetchFailed: false,
     });
 
     try {
@@ -383,6 +386,9 @@ export default function ResultsPage() {
 
       const [rosterRes, statusRes] = await Promise.all([rosterFetch, statusFetch ?? Promise.resolve(null)]);
 
+      if (!rosterRes.ok) {
+        throw new Error(`Failed to load roster (HTTP ${rosterRes.status})`);
+      }
       const rosterData = await rosterRes.json();
       const roster = rosterData.map((r: { slot: number; golfer_name: string; times_used: number }) => ({
         slot: r.slot,
@@ -391,6 +397,7 @@ export default function ResultsPage() {
       }));
 
       let teamProposal: Map<number, ProposedResult> = new Map();
+      let statusFetchFailed = false;
       if (statusRes !== null) {
         if (statusRes.ok) {
           const statusData = await statusRes.json();
@@ -399,6 +406,7 @@ export default function ResultsPage() {
           );
         } else {
           console.error('team-roster-status fetch failed:', statusRes.status);
+          statusFetchFailed = true;
         }
       }
 
@@ -406,14 +414,15 @@ export default function ResultsPage() {
         ...prev,
         roster,
         teamProposal,
+        statusFetchFailed,
         loading: false,
       }));
-    } catch (err) {
-      console.error('openAdjustmentModal fetch error:', err);
+    } catch (e) {
+      console.error('openAdjustmentModal fetch error:', e);
       setAdjustment((prev) => ({
         ...prev,
         loading: false,
-        error: 'Failed to load roster',
+        error: e instanceof Error ? e.message : 'Failed to load roster',
       }));
     }
   };
@@ -433,6 +442,7 @@ export default function ResultsPage() {
       error: '',
       slotsInLineup: new Set(),
       teamProposal: new Map(),
+      statusFetchFailed: false,
     });
   };
 
@@ -778,6 +788,11 @@ export default function ResultsPage() {
                     </div>
                   ) : (
                     <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {adjustment.statusFetchFailed && (
+                        <p className="text-xs text-amber-700 mb-2">
+                          Could not load ESPN status for candidates. Pick by name and times-used.
+                        </p>
+                      )}
                       {adjustment.roster
                         .filter((slot) => slot.slot !== adjustment.oldSlot && !adjustment.slotsInLineup.has(slot.slot))
                         .map((slot) => {
@@ -823,7 +838,7 @@ export default function ResultsPage() {
                               )}
                               {(() => {
                                 const candidateProposal = adjustment.teamProposal.get(slot.slot);
-                                if (!candidateProposal) return null;
+                                if (!candidateProposal || candidateProposal.status === 'manual_entry') return null;
                                 return (
                                   <div className="mt-1 flex items-center gap-2 text-xs">
                                     <StatusBadge status={candidateProposal.status} positionDisplay={candidateProposal.position_display} />
