@@ -3,7 +3,7 @@ import { sql } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {
-    const { action, tournament_id, name, deadline, status } = await request.json();
+    const { action, tournament_id, name, deadline, status, espn_event_id, season } = await request.json();
 
     if (action === 'create') {
       if (!tournament_id || !name || !deadline) {
@@ -14,8 +14,8 @@ export async function POST(request: NextRequest) {
       }
 
       await sql`
-        INSERT INTO tournaments (tournament_id, name, deadline, status)
-        VALUES (${tournament_id}, ${name}, ${deadline}, ${status ?? 'open'})
+        INSERT INTO tournaments (tournament_id, name, deadline, status, espn_event_id, season)
+        VALUES (${tournament_id}, ${name}, ${deadline}, ${status ?? 'open'}, ${espn_event_id ?? null}, ${season ?? null})
       `;
 
       return NextResponse.json({ success: true });
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'tournament_id required' }, { status: 400 });
       }
 
-      const rows = await sql`SELECT tournament_id, name, deadline, status FROM tournaments WHERE tournament_id = ${tournament_id}`;
+      const rows = await sql`SELECT tournament_id, name, deadline, status, espn_event_id, season FROM tournaments WHERE tournament_id = ${tournament_id}`;
       if (rows.length === 0) {
         return NextResponse.json({ error: 'Tournament not found' }, { status: 404 });
       }
@@ -35,9 +35,11 @@ export async function POST(request: NextRequest) {
       await sql`
         UPDATE tournaments
         SET
-          name     = ${name     ?? current.name},
-          deadline = ${deadline ?? current.deadline},
-          status   = ${status   ?? current.status}
+          name           = ${name           ?? current.name},
+          deadline       = ${deadline       ?? current.deadline},
+          status         = ${status         ?? current.status},
+          espn_event_id  = ${espn_event_id  ?? current.espn_event_id},
+          season         = ${season         ?? current.season}
         WHERE tournament_id = ${tournament_id}
       `;
 

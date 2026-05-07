@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import type { FetchScoresResponse, LineupResultStatus, ProposedResult } from '@/lib/scoring';
 
 interface LineupResult {
   team_id: number;
@@ -32,6 +33,26 @@ interface AdjustmentState {
   note: string;
   loading: boolean;
   error: string;
+  slotsInLineup: Set<number>;
+  teamProposal: Map<number, ProposedResult>;
+  statusFetchFailed: boolean;
+}
+
+function StatusBadge({ status, positionDisplay }: { status: LineupResultStatus; positionDisplay?: string | null }) {
+  const configs: Record<LineupResultStatus, { label: string; className: string }> = {
+    played: { label: positionDisplay ?? 'Played', className: 'bg-green-100 text-green-700' },
+    missed_cut: { label: 'MC', className: 'bg-amber-100 text-amber-700' },
+    withdrew: { label: 'WD', className: 'bg-amber-100 text-amber-700' },
+    did_not_play: { label: 'DNP', className: 'bg-amber-100 text-amber-700' },
+    manual_entry: { label: 'Manual entry', className: 'bg-red-100 text-red-700' },
+    fetch_failed: { label: 'Fetch failed', className: 'bg-red-100 text-red-700' },
+  };
+  const { label, className } = configs[status];
+  return (
+    <span className={`text-xs font-medium px-2 py-0.5 rounded ${className}`}>
+      {label}
+    </span>
+  );
 }
 
 export default function ResultsPage() {
@@ -49,6 +70,12 @@ export default function ResultsPage() {
   const [uploadError, setUploadError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [proposalByKey, setProposalByKey] = useState<Map<string, ProposedResult>>(new Map());
+  const [summary, setSummary] = useState<FetchScoresResponse['summary'] | null>(null);
+  const [fetching, setFetching] = useState(false);
+  const [fetchError, setFetchError] = useState('');
+  const [tournamentEspnEventId, setTournamentEspnEventId] = useState<string | null>(null);
+
   // Lineup adjustment state
   const [adjustment, setAdjustment] = useState<AdjustmentState>({
     isOpen: false,
@@ -62,6 +89,9 @@ export default function ResultsPage() {
     note: '',
     loading: false,
     error: '',
+    slotsInLineup: new Set(),
+    teamProposal: new Map(),
+    statusFetchFailed: false,
   });
 
   useEffect(() => {
@@ -72,10 +102,14 @@ export default function ResultsPage() {
 
   const fetchData = useCallback(async () => {
     if (!id) return;
+    setProposalByKey(new Map());
+    setSummary(null);
+    setFetchError('');
     const res = await fetch(`/api/tournaments/${id}`);
     const data = await res.json();
 
     setTournamentName(data.tournament?.name || '');
+    setTournamentEspnEventId(data.tournament?.espn_event_id || null);
 
     // Track teams without lineups
     const missingTeams: string[] = [];
@@ -274,8 +308,55 @@ export default function ResultsPage() {
     return fields;
   };
 
-  // Open adjustment modal and fetch roster
+  const handlePullResults = async () => {
+    setFetching(true);
+    setFetchError('');
+
+    try {
+      const res = await fetch('/api/admin/fetch-scores', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tournament_id: id }),
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setFetchError((body as { error?: string }).error || 'Failed to fetch scores');
+        return;
+      }
+      const data: FetchScoresResponse = await res.json();
+
+      // Build a map keyed by team_id:slot
+      const map = new Map<string, ProposedResult>();
+      data.proposed.forEach((p) => {
+        map.set(`${p.team_id}:${p.slot}`, p);
+      });
+
+      // Overlay fetched_fedex_points into results for 'played' rows
+      setResults((prev) =>
+        prev.map((r) => {
+          const proposal = map.get(`${r.team_id}:${r.slot}`);
+          if (proposal && proposal.status === 'played') {
+            return { ...r, fedex_points: proposal.fetched_fedex_points };
+          }
+          return r;
+        })
+      );
+
+      setProposalByKey(map);
+      setSummary(data.summary);
+    } catch {
+      setFetchError('Network error fetching scores');
+    } finally {
+      setFetching(false);
+    }
+  };
+
+  // Open adjustment modal and fetch roster (+ ESPN status when available)
   const openAdjustmentModal = async (entry: LineupResult) => {
+    const slotsInLineup = new Set(
+      results.filter((r) => r.team_id === entry.team_id).map((r) => r.slot),
+    );
     setAdjustment({
       isOpen: true,
       teamId: entry.team_id,
@@ -288,25 +369,60 @@ export default function ResultsPage() {
       note: '',
       loading: true,
       error: '',
+      slotsInLineup,
+      teamProposal: new Map(),
+      statusFetchFailed: false,
     });
 
     try {
-      const res = await fetch(`/api/roster/${entry.team_id}`);
-      const rosterData = await res.json();
+      const rosterFetch = fetch(`/api/roster/${entry.team_id}`);
+      const statusFetch = tournamentEspnEventId
+        ? fetch('/api/admin/team-roster-status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ team_id: entry.team_id, tournament_id: id }),
+          })
+        : null;
+
+      const [rosterRes, statusRes] = await Promise.all([rosterFetch, statusFetch ?? Promise.resolve(null)]);
+
+      if (!rosterRes.ok) {
+        throw new Error(`Failed to load roster (HTTP ${rosterRes.status})`);
+      }
+      const rosterData = await rosterRes.json();
+      const roster = rosterData.map((r: { slot: number; golfer_name: string; times_used: number }) => ({
+        slot: r.slot,
+        golfer_name: r.golfer_name,
+        times_used: r.times_used,
+      }));
+
+      let teamProposal: Map<number, ProposedResult> = new Map();
+      let statusFetchFailed = false;
+      if (statusRes !== null) {
+        if (statusRes.ok) {
+          const statusData = await statusRes.json();
+          teamProposal = new Map(
+            (statusData.roster_status as ProposedResult[]).map((p) => [p.slot, p]),
+          );
+        } else {
+          console.error('team-roster-status fetch failed:', statusRes.status);
+          statusFetchFailed = true;
+        }
+      }
+
       setAdjustment((prev) => ({
         ...prev,
-        roster: rosterData.map((r: { slot: number; golfer_name: string; times_used: number }) => ({
-          slot: r.slot,
-          golfer_name: r.golfer_name,
-          times_used: r.times_used,
-        })),
+        roster,
+        teamProposal,
+        statusFetchFailed,
         loading: false,
       }));
-    } catch {
+    } catch (e) {
+      console.error('openAdjustmentModal fetch error:', e);
       setAdjustment((prev) => ({
         ...prev,
         loading: false,
-        error: 'Failed to load roster',
+        error: e instanceof Error ? e.message : 'Failed to load roster',
       }));
     }
   };
@@ -324,6 +440,9 @@ export default function ResultsPage() {
       note: '',
       loading: false,
       error: '',
+      slotsInLineup: new Set(),
+      teamProposal: new Map(),
+      statusFetchFailed: false,
     });
   };
 
@@ -430,6 +549,43 @@ export default function ResultsPage() {
           </div>
         </div>
 
+        {/* Pull Results from ESPN */}
+        {tournamentEspnEventId && results.length > 0 && (
+          <div className="mb-4">
+            <div className="flex flex-wrap items-center gap-3 mb-2">
+              <button
+                onClick={handlePullResults}
+                disabled={fetching}
+                title="Fetch FedEx points from ESPN for every lineup row"
+                className="btn btn-primary text-sm py-2 px-4"
+              >
+                {fetching ? 'Pulling…' : 'Pull Results from ESPN'}
+              </button>
+              {fetchError && (
+                <span className="text-sm text-red-600">{fetchError}</span>
+              )}
+            </div>
+            {summary && (
+              <p className="text-sm text-charcoal-light">
+                Fetched {summary.played + summary.missed_cut + summary.withdrew} of {summary.total} results
+                {summary.did_not_play > 0 && ` — ${summary.did_not_play} did not play`}
+                {summary.missed_cut > 0 && ` — ${summary.missed_cut} missed cut`}
+                {summary.withdrew > 0 && ` — ${summary.withdrew} withdrew`}
+                {summary.manual_entry > 0 && ` — ${summary.manual_entry} manual entry`}
+                {summary.fetch_failed > 0 && ` — ${summary.fetch_failed} fetch failed`}
+              </p>
+            )}
+          </div>
+        )}
+        {!tournamentEspnEventId && results.length > 0 && (
+          <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-amber-50 border border-amber-200 mb-4 text-sm text-amber-800">
+            This tournament has no ESPN event id mapped.{' '}
+            <Link href="/admin/backfill-events" className="underline hover:text-amber-900">
+              Map it →
+            </Link>
+          </div>
+        )}
+
         {/* CSV Download/Upload */}
         {results.length > 0 && (
           <div className="flex flex-wrap items-center gap-3 mb-6">
@@ -532,6 +688,10 @@ export default function ResultsPage() {
                       </span>
                       <span className="font-medium text-charcoal">{r.golfer_name}</span>
                       <span className="text-xs text-charcoal-light">(Slot {r.slot})</span>
+                      {(() => {
+                        const proposal = proposalByKey.get(`${r.team_id}:${r.slot}`);
+                        return proposal ? <StatusBadge status={proposal.status} positionDisplay={proposal.position_display} /> : null;
+                      })()}
                     </div>
                     <div className="flex items-center gap-2">
                       <button
@@ -570,7 +730,7 @@ export default function ResultsPage() {
         {results.length > 0 && (
           <button
             onClick={handleSave}
-            disabled={saving}
+            disabled={saving || fetching}
             className="btn btn-primary w-full py-4 text-lg"
           >
             {saving ? (
@@ -628,15 +788,28 @@ export default function ResultsPage() {
                     </div>
                   ) : (
                     <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {adjustment.statusFetchFailed && (
+                        <p className="text-xs text-amber-700 mb-2">
+                          Could not load ESPN status for candidates. Pick by name and times-used.
+                        </p>
+                      )}
                       {adjustment.roster
-                        .filter((slot) => slot.slot !== adjustment.oldSlot)
+                        .filter((slot) => slot.slot !== adjustment.oldSlot && !adjustment.slotsInLineup.has(slot.slot))
                         .map((slot) => {
                           const isMaxed = slot.times_used >= 8;
                           const isSelected = adjustment.newSlot === slot.slot;
                           return (
                             <button
                               key={slot.slot}
-                              onClick={() => !isMaxed && setAdjustment((prev) => ({ ...prev, newSlot: slot.slot }))}
+                              onClick={() => {
+                                if (isMaxed) return;
+                                const candidateProposal = adjustment.teamProposal.get(slot.slot);
+                                setAdjustment((prev) => ({
+                                  ...prev,
+                                  newSlot: slot.slot,
+                                  newPoints: candidateProposal?.status === 'played' ? candidateProposal.fetched_fedex_points : prev.newPoints,
+                                }));
+                              }}
                               disabled={isMaxed}
                               className={`w-full p-3 rounded-lg border-2 text-left transition-colors ${
                                 isMaxed
@@ -663,6 +836,18 @@ export default function ResultsPage() {
                               {isMaxed && (
                                 <p className="text-xs text-red-600 mt-1">Max uses reached</p>
                               )}
+                              {(() => {
+                                const candidateProposal = adjustment.teamProposal.get(slot.slot);
+                                if (!candidateProposal || candidateProposal.status === 'manual_entry') return null;
+                                return (
+                                  <div className="mt-1 flex items-center gap-2 text-xs">
+                                    <StatusBadge status={candidateProposal.status} positionDisplay={candidateProposal.position_display} />
+                                    {candidateProposal.status === 'played' && (
+                                      <span className="text-charcoal-light">{candidateProposal.fetched_fedex_points} pts</span>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                             </button>
                           );
                         })}

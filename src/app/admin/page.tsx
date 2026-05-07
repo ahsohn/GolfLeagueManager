@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { Tournament } from '@/types';
+import { EspnEventPicker } from '@/components/EspnEventPicker';
 
 export default function AdminPage() {
   const { team, isCommissioner, isLoading } = useAuth();
@@ -15,6 +16,8 @@ export default function AdminPage() {
     tournament_id: '',
     name: '',
     deadline: '',
+    espn_event_id: '',
+    season: 0,
   });
   const [saving, setSaving] = useState(false);
   const [editingTournament, setEditingTournament] = useState<Tournament | null>(null);
@@ -43,9 +46,16 @@ export default function AdminPage() {
     await fetch('/api/admin/tournament', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'create', ...newTournament }),
+      body: JSON.stringify({
+        action: 'create',
+        tournament_id: newTournament.tournament_id,
+        name: newTournament.name,
+        deadline: newTournament.deadline,
+        espn_event_id: newTournament.espn_event_id || null,
+        season: newTournament.season || null,
+      }),
     });
-    setNewTournament({ tournament_id: '', name: '', deadline: '' });
+    setNewTournament({ tournament_id: '', name: '', deadline: '', espn_event_id: '', season: 0 });
     const res = await fetch('/api/tournaments');
     setTournaments(await res.json());
     setSaving(false);
@@ -180,12 +190,45 @@ export default function AdminPage() {
           </div>
         </div>
 
+        {/* Backfill banner */}
+        {tournaments.some((t) => !t.espn_event_id) && (
+          <div className="mb-6 p-4 rounded-lg bg-amber-50 border border-amber-200 text-sm">
+            Some tournaments are missing an ESPN event mapping.{' '}
+            <Link href="/admin/backfill-events" className="font-medium text-amber-900 underline">
+              Backfill them →
+            </Link>
+          </div>
+        )}
+
         {/* Create Tournament Card */}
         <div className="card mb-8">
           <h3 className="font-display text-lg font-semibold text-charcoal mb-4 flex items-center gap-2">
             <span className="text-gold">+</span>
             Create Tournament
           </h3>
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-charcoal-light mb-2 uppercase tracking-wide">
+              ESPN Event
+            </label>
+            <EspnEventPicker
+              currentTournamentName={newTournament.name}
+              onChange={(sel) => {
+                if (!sel) {
+                  setNewTournament((prev) => ({ ...prev, espn_event_id: '', season: 0 }));
+                  return;
+                }
+                setNewTournament((prev) => ({
+                  ...prev,
+                  espn_event_id: sel.espnEventId,
+                  season: sel.season,
+                  // Default tournament_id to the espn event id; admin can still override.
+                  tournament_id: prev.tournament_id || sel.espnEventId,
+                  // Default name from the ESPN event if the field is empty.
+                  name: prev.name || sel.eventName,
+                }));
+              }}
+            />
+          </div>
           <div className="grid gap-4 md:grid-cols-3">
             <div>
               <label className="block text-sm font-medium text-charcoal-light mb-2 uppercase tracking-wide">
@@ -229,7 +272,13 @@ export default function AdminPage() {
           </div>
           <button
             onClick={createTournament}
-            disabled={saving || !newTournament.tournament_id || !newTournament.name || !newTournament.deadline}
+            disabled={
+              saving ||
+              !newTournament.tournament_id ||
+              !newTournament.name ||
+              !newTournament.deadline ||
+              !newTournament.espn_event_id
+            }
             className="btn btn-gold mt-6"
           >
             {saving ? (

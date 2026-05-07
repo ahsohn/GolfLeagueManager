@@ -1,0 +1,3 @@
+source: C:\Users\ahsoh\Documents\VibeCoding\egolfapi\egolfapi
+sha: 694633944e8fb1c648903fcb4c8ba355260df1ac
+synced: 2026-05-06T02:24:09.331Z

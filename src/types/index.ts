@@ -21,6 +21,8 @@ export interface Tournament {
   name: string;
   deadline: string; // ISO datetime
   status: 'open' | 'locked' | 'closed';
+  espn_event_id?: string | null;
+  season?: number | null;
 }
 
 export interface LineupEntry {

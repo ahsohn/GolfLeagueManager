@@ -15,7 +15,7 @@ export async function GET(
 
     // Query sequentially
     const tournamentRows = await sql`
-      SELECT tournament_id, name, deadline, status
+      SELECT tournament_id, name, deadline, status, espn_event_id, season
       FROM tournaments
       WHERE tournament_id = ${id}
     `;
