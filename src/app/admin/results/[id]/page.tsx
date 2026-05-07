@@ -100,6 +100,9 @@ export default function ResultsPage() {
 
   const fetchData = useCallback(async () => {
     if (!id) return;
+    setProposalByKey(new Map());
+    setSummary(null);
+    setFetchError('');
     const res = await fetch(`/api/tournaments/${id}`);
     const data = await res.json();
 
@@ -314,12 +317,12 @@ export default function ResultsPage() {
         body: JSON.stringify({ tournament_id: id }),
       });
 
-      const data: FetchScoresResponse = await res.json();
-
       if (!res.ok) {
-        setFetchError((data as unknown as { error?: string }).error || 'Failed to fetch scores');
+        const body = await res.json().catch(() => ({}));
+        setFetchError((body as { error?: string }).error || 'Failed to fetch scores');
         return;
       }
+      const data: FetchScoresResponse = await res.json();
 
       // Build a map keyed by team_id:slot
       const map = new Map<string, ProposedResult>();
@@ -521,6 +524,7 @@ export default function ResultsPage() {
               <button
                 onClick={handlePullResults}
                 disabled={fetching}
+                title="Fetch FedEx points from ESPN for every lineup row"
                 className="btn btn-primary text-sm py-2 px-4"
               >
                 {fetching ? 'Pulling…' : 'Pull Results from ESPN'}
@@ -694,7 +698,7 @@ export default function ResultsPage() {
         {results.length > 0 && (
           <button
             onClick={handleSave}
-            disabled={saving}
+            disabled={saving || fetching}
             className="btn btn-primary w-full py-4 text-lg"
           >
             {saving ? (
