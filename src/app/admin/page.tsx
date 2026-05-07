@@ -190,6 +190,16 @@ export default function AdminPage() {
           </div>
         </div>
 
+        {/* Backfill banner */}
+        {tournaments.some((t) => !t.espn_event_id) && (
+          <div className="mb-6 p-4 rounded-lg bg-amber-50 border border-amber-200 text-sm">
+            Some tournaments are missing an ESPN event mapping.{' '}
+            <Link href="/admin/backfill-events" className="font-medium text-amber-900 underline">
+              Backfill them →
+            </Link>
+          </div>
+        )}
+
         {/* Create Tournament Card */}
         <div className="card mb-8">
           <h3 className="font-display text-lg font-semibold text-charcoal mb-4 flex items-center gap-2">
