@@ -35,6 +35,23 @@ interface AdjustmentState {
   error: string;
 }
 
+function StatusBadge({ status, positionDisplay }: { status: LineupResultStatus; positionDisplay?: string | null }) {
+  const configs: Record<LineupResultStatus, { label: string; className: string }> = {
+    played: { label: positionDisplay ?? 'Played', className: 'bg-green-100 text-green-700' },
+    missed_cut: { label: 'MC', className: 'bg-amber-100 text-amber-700' },
+    withdrew: { label: 'WD', className: 'bg-amber-100 text-amber-700' },
+    did_not_play: { label: 'DNP', className: 'bg-amber-100 text-amber-700' },
+    manual_entry: { label: 'Manual entry', className: 'bg-red-100 text-red-700' },
+    fetch_failed: { label: 'Fetch failed', className: 'bg-red-100 text-red-700' },
+  };
+  const { label, className } = configs[status];
+  return (
+    <span className={`text-xs font-medium px-2 py-0.5 rounded ${className}`}>
+      {label}
+    </span>
+  );
+}
+
 export default function ResultsPage() {
   const { id } = useParams();
   const { isCommissioner, isLoading, team } = useAuth();
@@ -620,6 +637,10 @@ export default function ResultsPage() {
                       </span>
                       <span className="font-medium text-charcoal">{r.golfer_name}</span>
                       <span className="text-xs text-charcoal-light">(Slot {r.slot})</span>
+                      {(() => {
+                        const proposal = proposalByKey.get(`${r.team_id}:${r.slot}`);
+                        return proposal ? <StatusBadge status={proposal.status} positionDisplay={proposal.position_display} /> : null;
+                      })()}
                     </div>
                     <div className="flex items-center gap-2">
                       <button
