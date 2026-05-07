@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 interface ScheduleEvent {
   eventId: string;
@@ -16,6 +16,7 @@ interface ScheduleResponse {
 
 export interface EspnEventPickerProps {
   defaultSeason?: number;
+  /** Used only to rank events by similarity; does not affect the displayed value. */
   currentTournamentName?: string;
   onChange: (selection: { espnEventId: string; season: number; eventName: string } | null) => void;
 }
@@ -27,6 +28,8 @@ function similarityScore(name: string, target: string): number {
   if (a === b) return 1000;
   if (a.includes(b) || b.includes(a)) return 500;
   // Cheap token-overlap score; good enough for one-off picks.
+  // bTokens is a plain array (not a Set) to avoid tsc Set-iteration complaints under
+  // the project's default ES target. aTokens stays a Set because we use .has().
   const aTokens = new Set(a.split(/\s+/));
   const bTokens = b.split(/\s+/);
   let overlap = 0;
@@ -37,13 +40,37 @@ function similarityScore(name: string, target: string): number {
 export function EspnEventPicker({ defaultSeason, currentTournamentName, onChange }: EspnEventPickerProps) {
   const currentYear = new Date().getFullYear();
   const [season, setSeason] = useState<number>(defaultSeason ?? currentYear);
-  const [events, setEvents] = useState<ScheduleEvent[]>([]);
+  const [rawEvents, setRawEvents] = useState<ScheduleEvent[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [selectedId, setSelectedId] = useState<string>('');
 
+  // Keep a stable ref to onChange so the fetch effect doesn't need it in its dep array,
+  // preventing infinite re-renders when the parent doesn't memoize the callback.
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  });
+
+  // Sort events by similarity to the current tournament name without re-fetching.
+  const events = useMemo(
+    () =>
+      currentTournamentName
+        ? [...rawEvents].sort(
+            (a, b) =>
+              similarityScore(b.name, currentTournamentName) -
+              similarityScore(a.name, currentTournamentName),
+          )
+        : rawEvents,
+    [rawEvents, currentTournamentName],
+  );
+
   useEffect(() => {
     let cancelled = false;
+    // Invalidate any prior selection whenever the season changes.
+    setSelectedId('');
+    onChangeRef.current(null);
+
     setLoading(true);
     setError('');
     fetch(`/api/admin/espn-schedule?season=${season}`)
@@ -53,17 +80,18 @@ export function EspnEventPicker({ defaultSeason, currentTournamentName, onChange
       })
       .then((data: ScheduleResponse) => {
         if (cancelled) return;
-        const sorted = currentTournamentName
-          ? [...data.events].sort((a, b) => similarityScore(b.name, currentTournamentName) - similarityScore(a.name, currentTournamentName))
-          : data.events;
-        setEvents(sorted);
+        setRawEvents(data.events);
       })
-      .catch((e) => !cancelled && setError(e.message))
+      .catch((e: Error) => {
+        if (cancelled) return;
+        // Preserve any previously loaded events so the select stays usable.
+        setError(e.message || 'Failed to load schedule');
+      })
       .finally(() => !cancelled && setLoading(false));
     return () => {
       cancelled = true;
     };
-  }, [season, currentTournamentName]);
+  }, [season]);
 
   const handleSelect = (eventId: string) => {
     setSelectedId(eventId);
@@ -89,15 +117,14 @@ export function EspnEventPicker({ defaultSeason, currentTournamentName, onChange
           ))}
         </select>
       </div>
-      {loading ? (
-        <p className="text-sm text-charcoal-light">Loading schedule…</p>
-      ) : error ? (
-        <p className="text-sm text-red-600">{error}</p>
-      ) : (
+      {error && <p className="text-sm text-red-600">{error}</p>}
+      {loading && <p className="text-sm text-charcoal-light">Loading schedule…</p>}
+      {!loading && (
         <select
           value={selectedId}
           onChange={(e) => handleSelect(e.target.value)}
           className="input w-full"
+          disabled={events.length === 0 && !error}
         >
           <option value="">Pick an event…</option>
           {events.map((e) => (
