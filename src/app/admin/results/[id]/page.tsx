@@ -282,6 +282,50 @@ export default function ResultsPage() {
     return fields;
   };
 
+  const handlePullResults = async () => {
+    setFetching(true);
+    setFetchError('');
+
+    try {
+      const res = await fetch('/api/admin/fetch-scores', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tournament_id: id }),
+      });
+
+      const data: FetchScoresResponse = await res.json();
+
+      if (!res.ok) {
+        setFetchError((data as unknown as { error?: string }).error || 'Failed to fetch scores');
+        return;
+      }
+
+      // Build a map keyed by team_id:slot
+      const map = new Map<string, ProposedResult>();
+      data.proposed.forEach((p) => {
+        map.set(`${p.team_id}:${p.slot}`, p);
+      });
+
+      // Overlay fetched_fedex_points into results for 'played' rows
+      setResults((prev) =>
+        prev.map((r) => {
+          const proposal = map.get(`${r.team_id}:${r.slot}`);
+          if (proposal && proposal.status === 'played') {
+            return { ...r, fedex_points: proposal.fetched_fedex_points };
+          }
+          return r;
+        })
+      );
+
+      setProposalByKey(map);
+      setSummary(data.summary);
+    } catch {
+      setFetchError('Network error fetching scores');
+    } finally {
+      setFetching(false);
+    }
+  };
+
   // Open adjustment modal and fetch roster
   const openAdjustmentModal = async (entry: LineupResult) => {
     setAdjustment({
@@ -437,6 +481,42 @@ export default function ResultsPage() {
             )}
           </div>
         </div>
+
+        {/* Pull Results from ESPN */}
+        {tournamentEspnEventId && results.length > 0 && (
+          <div className="mb-4">
+            <div className="flex flex-wrap items-center gap-3 mb-2">
+              <button
+                onClick={handlePullResults}
+                disabled={fetching}
+                className="btn btn-primary text-sm py-2 px-4"
+              >
+                {fetching ? 'Pulling…' : 'Pull Results from ESPN'}
+              </button>
+              {fetchError && (
+                <span className="text-sm text-red-600">{fetchError}</span>
+              )}
+            </div>
+            {summary && (
+              <p className="text-sm text-charcoal-light">
+                Fetched {summary.played} of {summary.total} results
+                {summary.did_not_play > 0 && ` — ${summary.did_not_play} did not play`}
+                {summary.missed_cut > 0 && ` — ${summary.missed_cut} missed cut`}
+                {summary.withdrew > 0 && ` — ${summary.withdrew} withdrew`}
+                {summary.manual_entry > 0 && ` — ${summary.manual_entry} manual entry`}
+                {summary.fetch_failed > 0 && ` — ${summary.fetch_failed} fetch failed`}
+              </p>
+            )}
+          </div>
+        )}
+        {!tournamentEspnEventId && results.length > 0 && (
+          <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-amber-50 border border-amber-200 mb-4 text-sm text-amber-800">
+            This tournament has no ESPN event id mapped.{' '}
+            <Link href="/admin/backfill-events" className="underline hover:text-amber-900">
+              Map it →
+            </Link>
+          </div>
+        )}
 
         {/* CSV Download/Upload */}
         {results.length > 0 && (
