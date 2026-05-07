@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import type { FetchScoresResponse, LineupResultStatus, ProposedResult } from '@/lib/scoring';
 
 interface LineupResult {
   team_id: number;
@@ -49,6 +50,12 @@ export default function ResultsPage() {
   const [uploadError, setUploadError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [proposalByKey, setProposalByKey] = useState<Map<string, ProposedResult>>(new Map());
+  const [summary, setSummary] = useState<FetchScoresResponse['summary'] | null>(null);
+  const [fetching, setFetching] = useState(false);
+  const [fetchError, setFetchError] = useState('');
+  const [tournamentEspnEventId, setTournamentEspnEventId] = useState<string | null>(null);
+
   // Lineup adjustment state
   const [adjustment, setAdjustment] = useState<AdjustmentState>({
     isOpen: false,
@@ -76,6 +83,7 @@ export default function ResultsPage() {
     const data = await res.json();
 
     setTournamentName(data.tournament?.name || '');
+    setTournamentEspnEventId(data.tournament?.espn_event_id || null);
 
     // Track teams without lineups
     const missingTeams: string[] = [];
