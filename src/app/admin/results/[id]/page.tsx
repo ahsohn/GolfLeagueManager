@@ -33,6 +33,8 @@ interface AdjustmentState {
   note: string;
   loading: boolean;
   error: string;
+  slotsInLineup: Set<number>;
+  teamProposal: Map<number, ProposedResult>;
 }
 
 function StatusBadge({ status, positionDisplay }: { status: LineupResultStatus; positionDisplay?: string | null }) {
@@ -86,6 +88,8 @@ export default function ResultsPage() {
     note: '',
     loading: false,
     error: '',
+    slotsInLineup: new Set(),
+    teamProposal: new Map(),
   });
 
   useEffect(() => {
@@ -345,6 +349,9 @@ export default function ResultsPage() {
 
   // Open adjustment modal and fetch roster
   const openAdjustmentModal = async (entry: LineupResult) => {
+    const slotsInLineup = new Set(
+      results.filter((r) => r.team_id === entry.team_id).map((r) => r.slot),
+    );
     setAdjustment({
       isOpen: true,
       teamId: entry.team_id,
@@ -357,6 +364,12 @@ export default function ResultsPage() {
       note: '',
       loading: true,
       error: '',
+      slotsInLineup,
+      teamProposal: new Map(
+        Array.from(proposalByKey.values())
+          .filter((p) => p.team_id === entry.team_id)
+          .map((p) => [p.slot, p]),
+      ),
     });
 
     try {
@@ -393,6 +406,8 @@ export default function ResultsPage() {
       note: '',
       loading: false,
       error: '',
+      slotsInLineup: new Set(),
+      teamProposal: new Map(),
     });
   };
 
@@ -738,14 +753,22 @@ export default function ResultsPage() {
                   ) : (
                     <div className="space-y-2 max-h-48 overflow-y-auto">
                       {adjustment.roster
-                        .filter((slot) => slot.slot !== adjustment.oldSlot)
+                        .filter((slot) => slot.slot !== adjustment.oldSlot && !adjustment.slotsInLineup.has(slot.slot))
                         .map((slot) => {
                           const isMaxed = slot.times_used >= 8;
                           const isSelected = adjustment.newSlot === slot.slot;
                           return (
                             <button
                               key={slot.slot}
-                              onClick={() => !isMaxed && setAdjustment((prev) => ({ ...prev, newSlot: slot.slot }))}
+                              onClick={() => {
+                                if (isMaxed) return;
+                                const candidateProposal = adjustment.teamProposal.get(slot.slot);
+                                setAdjustment((prev) => ({
+                                  ...prev,
+                                  newSlot: slot.slot,
+                                  newPoints: candidateProposal?.status === 'played' ? candidateProposal.fetched_fedex_points : prev.newPoints,
+                                }));
+                              }}
                               disabled={isMaxed}
                               className={`w-full p-3 rounded-lg border-2 text-left transition-colors ${
                                 isMaxed
@@ -772,6 +795,18 @@ export default function ResultsPage() {
                               {isMaxed && (
                                 <p className="text-xs text-red-600 mt-1">Max uses reached</p>
                               )}
+                              {(() => {
+                                const candidateProposal = adjustment.teamProposal.get(slot.slot);
+                                if (!candidateProposal) return null;
+                                return (
+                                  <div className="mt-1 flex items-center gap-2 text-xs">
+                                    <StatusBadge status={candidateProposal.status} positionDisplay={candidateProposal.position_display} />
+                                    {candidateProposal.status === 'played' && (
+                                      <span className="text-charcoal-light">{candidateProposal.fetched_fedex_points} pts</span>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                             </button>
                           );
                         })}
