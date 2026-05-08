@@ -229,6 +229,18 @@ export default function HomePage() {
           </Link>
 
           <Link
+            href="/analytics"
+            className="card hover:shadow-golf-lg transition-all group cursor-pointer text-center py-6"
+          >
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cream-dark to-sand mx-auto mb-3 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <svg className="w-6 h-6 text-masters-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3v18h18M7 14l3-3 4 4 5-5" />
+              </svg>
+            </div>
+            <span className="font-medium text-charcoal">Analytics</span>
+          </Link>
+
+          <Link
             href="/adjustments"
             className="card hover:shadow-golf-lg transition-all group cursor-pointer text-center py-6"
           >
