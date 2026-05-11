@@ -226,7 +226,11 @@ export function parsePlayerHistory(
     const positionData = competitor.status?.position ?? {};
     const positionDisplay =
       positionData.displayValue ?? positionData.displayName ?? "";
-    let fedex = 0;
+    // LOCAL DIVERGENCE FROM UPSTREAM egolfapi MIRROR:
+    // Start fedex as null. Only set a numeric value if the `cupPoints` stat
+    // is actually present. Lets downstream cache logic refetch when ESPN
+    // hasn't published FedEx points yet (window right after a tournament ends).
+    let fedex: number | null = null;
     for (const stat of competitor.stats ?? []) {
       if (stat?.name === "cupPoints") {
         const v = Number(stat.value ?? 0);

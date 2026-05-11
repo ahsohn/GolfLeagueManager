@@ -91,7 +91,12 @@ export interface PlayerEventResult {
   eventId: string;
   eventName: string;
   positionDisplay: string;
-  fedexPoints: number;
+  // LOCAL DIVERGENCE FROM UPSTREAM egolfapi MIRROR:
+  // `null` signals that ESPN's `cupPoints` stat was absent from the response
+  // (typical in the first hour after a tournament ends, before ESPN
+  // publishes FedEx points). Distinguishing null from 0 lets the cache
+  // refetch incomplete data instead of pinning a stale zero for 24 hours.
+  fedexPoints: number | null;
 }
 
 export interface PlayerSeasonHistory {
