@@ -89,6 +89,51 @@ describe('fetchAndCacheHistories', () => {
     expect(cacheUpsert).not.toHaveBeenCalled();
   });
 
+  it('refetches when cached payload has any result with null fedexPoints (incomplete cupPoints data)', async () => {
+    // Even though the cache row is within TTL ("fresh"), a null fedexPoints
+    // signals ESPN hadn't published the stat when we cached the response.
+    // We must refetch so we pick up the real points once ESPN publishes.
+    const player = { espnId: 'f', displayName: 'P f', shortName: null, normalizedName: 'p f' };
+    const incomplete: PlayerSeasonHistory = {
+      player, season: 2026,
+      results: [{ player, eventId: '401001', eventName: 'X', positionDisplay: 'T5', fedexPoints: null }],
+    };
+    const complete: PlayerSeasonHistory = {
+      player, season: 2026,
+      results: [{ player, eventId: '401001', eventName: 'X', positionDisplay: 'T5', fedexPoints: 267 }],
+    };
+    const cacheRead = jest.fn().mockResolvedValue([
+      { espn_id: 'f', season: 2026, fetched_at: new Date(now.getTime() - 1000), payload: incomplete },
+    ]);
+    const cacheUpsert = jest.fn().mockResolvedValue(undefined);
+    const client = { getPlayerHistory: jest.fn().mockResolvedValue(complete) };
+
+    const result = await fetchAndCacheHistories(['f'], 2026, { cacheRead, cacheUpsert }, client as any, now);
+
+    expect(client.getPlayerHistory).toHaveBeenCalledWith('f', 2026);
+    expect(cacheUpsert).toHaveBeenCalledWith('f', 2026, complete);
+    expect(result.get('f')).toEqual(complete);
+  });
+
+  it('falls back to the (still incomplete) cached payload if refetch fails', async () => {
+    const player = { espnId: 'g', displayName: 'P g', shortName: null, normalizedName: 'p g' };
+    const incomplete: PlayerSeasonHistory = {
+      player, season: 2026,
+      results: [{ player, eventId: '401001', eventName: 'X', positionDisplay: 'T5', fedexPoints: null }],
+    };
+    const cacheRead = jest.fn().mockResolvedValue([
+      { espn_id: 'g', season: 2026, fetched_at: new Date(now.getTime() - 1000), payload: incomplete },
+    ]);
+    const cacheUpsert = jest.fn();
+    const client = { getPlayerHistory: jest.fn().mockRejectedValue(new Error('502')) };
+
+    const result = await fetchAndCacheHistories(['g'], 2026, { cacheRead, cacheUpsert }, client as any, now);
+
+    expect(client.getPlayerHistory).toHaveBeenCalledWith('g', 2026);
+    expect(result.get('g')).toEqual(incomplete);
+    expect(cacheUpsert).not.toHaveBeenCalled();
+  });
+
   it('handles a mix of cache hit, miss, and stale in one call', async () => {
     const histA = makeHistory('a', 2026);
     const histB = makeHistory('b', 2026);

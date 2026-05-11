@@ -14,5 +14,9 @@ export function classifyLineupResult(
   const pos = result.positionDisplay;
   if (pos === 'MC') return 'missed_cut';
   if (pos === 'WD' || pos === 'DQ') return 'withdrew';
+  // ESPN returned a finishing position but the cupPoints stat hadn't been
+  // published — treat as fetch_failed so the admin retries (cache layer will
+  // also refetch automatically on next pull).
+  if (result.fedexPoints === null) return 'fetch_failed';
   return 'played';
 }

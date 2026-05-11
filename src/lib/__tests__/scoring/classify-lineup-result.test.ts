@@ -52,4 +52,13 @@ describe('classifyLineupResult', () => {
     ]};
     expect(classifyLineupResult(history, '401001', '9478')).toBe('withdrew');
   });
+
+  it('returns fetch_failed when fedexPoints is null (ESPN cupPoints stat absent)', () => {
+    // Position is filled in (player finished) but ESPN hasn't published FedEx
+    // points yet — distinct from a legitimate 0 (MC/WD).
+    const history = { ...baseHistory, results: [
+      { player, eventId: '401001', eventName: 'X', positionDisplay: 'T5', fedexPoints: null },
+    ]};
+    expect(classifyLineupResult(history, '401001', '9478')).toBe('fetch_failed');
+  });
 });

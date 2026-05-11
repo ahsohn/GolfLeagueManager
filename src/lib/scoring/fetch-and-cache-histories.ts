@@ -32,6 +32,20 @@ export async function fetchAndCacheHistories(
 
   const { fresh, stale, missing } = partitionByCacheFreshness(espnIds, cache, now);
 
+  // Any cached payload with a null fedexPoints result means ESPN's cupPoints
+  // stat was absent when we cached it — refetch instead of trusting the
+  // stale-but-not-yet-TTL-expired row.
+  const incompleteIds: string[] = [];
+  fresh.forEach((payload, id) => {
+    if (payload.results.some((r) => r.fedexPoints === null)) {
+      incompleteIds.push(id);
+    }
+  });
+  for (const id of incompleteIds) {
+    fresh.delete(id);
+    stale.push(id);
+  }
+
   fresh.forEach((payload, id) => result.set(id, payload));
 
   // Sequential awaits are intentional — ESPNClient enforces its own rate-limit
