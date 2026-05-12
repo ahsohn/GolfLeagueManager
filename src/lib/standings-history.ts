@@ -12,6 +12,7 @@ export interface StandingsHistoryTeam {
   team_name: string;
   color: string;
   rankings: number[];
+  cumulative_points: number[];
 }
 
 export interface StandingsHistoryResult {
@@ -46,9 +47,11 @@ export function buildStandingsHistory(
 
   const cumulativePoints: Record<number, number> = {};
   const rankingsPerTournament: Record<number, number[]> = {};
+  const cumulativePointsPerTournament: Record<number, number[]> = {};
   teamIds.forEach(id => {
     cumulativePoints[id] = 0;
     rankingsPerTournament[id] = [];
+    cumulativePointsPerTournament[id] = [];
   });
 
   const tournamentPoints: Record<number, number> = {};
@@ -57,6 +60,7 @@ export function buildStandingsHistory(
   const flushTournament = () => {
     teamIds.forEach(id => {
       cumulativePoints[id] += (tournamentPoints[id] || 0);
+      cumulativePointsPerTournament[id].push(cumulativePoints[id]);
     });
     const sorted = teamIds
       .map(id => ({ id, points: cumulativePoints[id] }))
@@ -85,6 +89,7 @@ export function buildStandingsHistory(
     team_name: teamMap.get(id) || '',
     color: palette[index % palette.length],
     rankings: rankingsPerTournament[id],
+    cumulative_points: cumulativePointsPerTournament[id],
   }));
 
   return { tournaments, teams };

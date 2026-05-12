@@ -59,3 +59,45 @@ describe('buildStandingsHistory', () => {
     expect(g.rankings[0]).toBe(3);
   });
 });
+
+describe('buildStandingsHistory cumulative_points', () => {
+  const rows: StandingsHistoryRow[] = [
+    { tournament_id: 'T1', tournament_name: 'Open',    deadline: '2026-01-01', team_id: 1, team_name: 'Alpha', points: 100 },
+    { tournament_id: 'T1', tournament_name: 'Open',    deadline: '2026-01-01', team_id: 2, team_name: 'Beta',  points: 50 },
+    { tournament_id: 'T2', tournament_name: 'Masters', deadline: '2026-02-01', team_id: 1, team_name: 'Alpha', points: 25 },
+    { tournament_id: 'T2', tournament_name: 'Masters', deadline: '2026-02-01', team_id: 2, team_name: 'Beta',  points: 100 },
+  ];
+
+  it('includes cumulative_points per team, same length as tournaments', () => {
+    const result = buildStandingsHistory(rows, ['#A', '#B']);
+    expect(result.teams[0].cumulative_points).toHaveLength(result.tournaments.length);
+    expect(result.teams[1].cumulative_points).toHaveLength(result.tournaments.length);
+  });
+
+  it('cumulative_points are running totals per team', () => {
+    const result = buildStandingsHistory(rows, ['#A', '#B']);
+    const alpha = result.teams.find(t => t.team_id === 1)!;
+    const beta  = result.teams.find(t => t.team_id === 2)!;
+    expect(alpha.cumulative_points).toEqual([100, 125]);
+    expect(beta.cumulative_points).toEqual([50, 150]);
+  });
+
+  it('cumulative_points are monotonically non-decreasing', () => {
+    const result = buildStandingsHistory(rows, ['#A', '#B']);
+    for (const team of result.teams) {
+      for (let i = 1; i < team.cumulative_points.length; i++) {
+        expect(team.cumulative_points[i]).toBeGreaterThanOrEqual(team.cumulative_points[i - 1]);
+      }
+    }
+  });
+
+  it('returns 0 for a team that played no eligible tournaments', () => {
+    const sparseRows: StandingsHistoryRow[] = [
+      { tournament_id: 'T1', tournament_name: 'Open', deadline: '2026-01-01', team_id: 1, team_name: 'Alpha', points: 100 },
+      { tournament_id: 'T1', tournament_name: 'Open', deadline: '2026-01-01', team_id: 2, team_name: 'Beta',  points: 0 },
+    ];
+    const result = buildStandingsHistory(sparseRows, ['#A', '#B']);
+    const beta = result.teams.find(t => t.team_id === 2)!;
+    expect(beta.cumulative_points).toEqual([0]);
+  });
+});
