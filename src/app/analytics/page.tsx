@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import TopSlotsTable from '@/components/TopSlotsTable';
+import StandingsGraph from '@/components/StandingsGraph';
 import type { TopSlotsResponse } from '@/app/api/analytics/top-slots/route';
 
 export default function AnalyticsPage() {
@@ -61,6 +62,18 @@ export default function AnalyticsPage() {
       </header>
 
       <main className="max-w-5xl mx-auto px-6 py-8 animate-fade-in">
+        <div className="card mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="font-display text-xl font-bold text-charcoal flex items-center gap-2">
+              <svg className="w-5 h-5 text-masters-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3v18h18M7 14l3-3 4 4 5-5" />
+              </svg>
+              Season Points Progress
+            </h2>
+          </div>
+          <StandingsGraph metric="points" />
+        </div>
+
         <div className="card">
           <div className="mb-6">
             <h2 className="font-display text-xl font-bold text-charcoal">Top 20 Slots</h2>
