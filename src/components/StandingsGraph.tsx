@@ -15,6 +15,7 @@ interface TeamData {
   team_name: string;
   color: string;
   rankings: number[];
+  cumulative_points: number[];
 }
 
 interface StandingsHistoryData {
@@ -27,11 +28,17 @@ interface ChartDataPoint {
   [key: string]: string | number;
 }
 
-export default function StandingsGraph() {
+type Metric = 'rank' | 'points';
+
+interface Props {
+  metric?: Metric;
+}
+
+export default function StandingsGraph({ metric = 'rank' }: Props) {
   const [data, setData] = useState<StandingsHistoryData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [selectedTeam, setSelectedTeam] = useState<number | null>(null);
+  const [selectedTeams, setSelectedTeams] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     const fetchData = async () => {
@@ -46,7 +53,6 @@ export default function StandingsGraph() {
         setLoading(false);
       }
     };
-
     fetchData();
   }, []);
 
@@ -74,28 +80,55 @@ export default function StandingsGraph() {
     );
   }
 
-  // Transform data for Recharts
+  const valueFor = (team: TeamData, i: number) =>
+    metric === 'rank' ? team.rankings[i] : team.cumulative_points[i];
+
   const chartData: ChartDataPoint[] = data.tournaments.map((tournament, index) => {
     const point: ChartDataPoint = { tournament };
     data.teams.forEach(team => {
-      point[`team_${team.team_id}`] = team.rankings[index];
+      point[`team_${team.team_id}`] = valueFor(team, index);
     });
     return point;
   });
 
-  const handleLegendClick = (teamId: number) => {
-    setSelectedTeam(selectedTeam === teamId ? null : teamId);
+  const toggleTeam = (teamId: number) => {
+    setSelectedTeams(prev => {
+      const next = new Set(prev);
+      if (next.has(teamId)) next.delete(teamId);
+      else next.add(teamId);
+      return next;
+    });
   };
 
-  // Abbreviate tournament names if too long
+  const isHighlighted = (teamId: number) =>
+    selectedTeams.size === 0 || selectedTeams.has(teamId);
+
   const abbreviate = (name: string) => {
     if (name.length <= 15) return name;
     return name.substring(0, 12) + '...';
   };
 
+  const yAxisProps =
+    metric === 'rank'
+      ? {
+          reversed: true as const,
+          domain: [1, 13] as [number, number],
+          ticks: [1, 3, 5, 7, 9, 11, 13],
+          label: { value: 'Rank', angle: -90, position: 'insideLeft' as const, fontSize: 12, fill: '#6B7280' },
+          width: 50,
+          tickFormatter: undefined,
+        }
+      : {
+          reversed: false as const,
+          domain: [0, 'dataMax'] as [number, string],
+          ticks: undefined,
+          label: { value: 'Points', angle: -90, position: 'insideLeft' as const, fontSize: 12, fill: '#6B7280' },
+          width: 70,
+          tickFormatter: (v: number) => v.toLocaleString(),
+        };
+
   return (
     <div>
-      {/* Chart */}
       <div className="h-[300px] md:h-[400px]">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={chartData} margin={{ top: 20, right: 20, left: 0, bottom: 20 }}>
@@ -108,12 +141,8 @@ export default function StandingsGraph() {
               height={80}
             />
             <YAxis
-              reversed
-              domain={[1, 13]}
-              ticks={[1, 3, 5, 7, 9, 11, 13]}
+              {...yAxisProps}
               tick={{ fontSize: 12, fill: '#6B7280' }}
-              label={{ value: 'Rank', angle: -90, position: 'insideLeft', fontSize: 12, fill: '#6B7280' }}
-              width={50}
             />
             <Tooltip
               content={({ active, payload, label }) => {
@@ -121,12 +150,17 @@ export default function StandingsGraph() {
                   const teamEntry = payload[0];
                   const teamId = Number(String(teamEntry.dataKey).replace('team_', ''));
                   const team = data.teams.find(t => t.team_id === teamId);
+                  const value = teamEntry.value as number;
+                  const valueLabel =
+                    metric === 'rank'
+                      ? `Rank: ${value}`
+                      : `Points: ${value.toLocaleString()}`;
                   return (
                     <div className="bg-white border border-cream-dark rounded-lg shadow-lg p-3">
                       <p className="font-semibold text-charcoal">{team?.team_name}</p>
                       <p className="text-sm text-charcoal-light">{label}</p>
                       <p className="text-sm font-medium" style={{ color: team?.color }}>
-                        Rank: {teamEntry.value}
+                        {valueLabel}
                       </p>
                     </div>
                   );
@@ -134,45 +168,49 @@ export default function StandingsGraph() {
                 return null;
               }}
             />
-            {data.teams.map(team => (
-              <Line
-                key={team.team_id}
-                type="linear"
-                dataKey={`team_${team.team_id}`}
-                stroke={team.color}
-                strokeWidth={selectedTeam === null || selectedTeam === team.team_id ? 2 : 1}
-                strokeOpacity={selectedTeam === null || selectedTeam === team.team_id ? 1 : 0.2}
-                dot={false}
-                activeDot={{ r: 6, strokeWidth: 2 }}
-              />
-            ))}
+            {data.teams.map(team => {
+              const highlighted = isHighlighted(team.team_id);
+              return (
+                <Line
+                  key={team.team_id}
+                  type="linear"
+                  dataKey={`team_${team.team_id}`}
+                  stroke={team.color}
+                  strokeWidth={highlighted ? 2 : 1}
+                  strokeOpacity={highlighted ? 1 : 0.2}
+                  dot={false}
+                  activeDot={{ r: 6, strokeWidth: 2 }}
+                />
+              );
+            })}
           </LineChart>
         </ResponsiveContainer>
       </div>
 
-      {/* Legend */}
       <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 mt-4">
-        {data.teams.map(team => (
-          <button
-            key={team.team_id}
-            onClick={() => handleLegendClick(team.team_id)}
-            className={`
-              flex items-center gap-2 px-2 py-1 rounded text-sm transition-all
-              ${selectedTeam === team.team_id
-                ? 'bg-cream-dark font-medium'
-                : 'hover:bg-cream-dark/50'}
-              ${selectedTeam !== null && selectedTeam !== team.team_id
-                ? 'opacity-40'
-                : ''}
-            `}
-          >
-            <span
-              className="w-3 h-3 rounded-full"
-              style={{ backgroundColor: team.color }}
-            />
-            <span className="text-charcoal">{team.team_name}</span>
-          </button>
-        ))}
+        {data.teams.map(team => {
+          const isSelected = selectedTeams.has(team.team_id);
+          const anySelected = selectedTeams.size > 0;
+          const dimmed = anySelected && !isSelected;
+          return (
+            <button
+              key={team.team_id}
+              onClick={() => toggleTeam(team.team_id)}
+              aria-pressed={isSelected}
+              className={`
+                flex items-center gap-2 px-2 py-1 rounded text-sm transition-all
+                ${isSelected ? 'bg-cream-dark font-medium' : 'hover:bg-cream-dark/50'}
+                ${dimmed ? 'opacity-40' : ''}
+              `}
+            >
+              <span
+                className="w-3 h-3 rounded-full"
+                style={{ backgroundColor: team.color }}
+              />
+              <span className="text-charcoal">{team.team_name}</span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
