@@ -102,6 +102,17 @@ export class ESPNClient {
     return parseLeaderboard(await this.request(LEADERBOARD_URL));
   }
 
+  // Single direct leaderboard call for one event's field. Unlike
+  // getHistoricalLeaderboard, this never falls back to player-aggregation
+  // (which fires dozens of requests) — it is meant for interactive use.
+  async getEventField(
+    eventId: string,
+    season: number,
+  ): Promise<Leaderboard | null> {
+    const payload = await this.request(LEADERBOARD_URL, { event: eventId, season });
+    return parseLeaderboard(payload);
+  }
+
   async getSchedule(season: number): Promise<Schedule> {
     return parseSchedule(await this.request(SCOREBOARD_URL), season);
   }
