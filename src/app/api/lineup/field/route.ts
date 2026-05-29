@@ -79,10 +79,13 @@ export async function GET(request: NextRequest) {
     }
 
     if (!field) {
-      return NextResponse.json({
-        field_available: false,
-        statuses: computeFieldStatuses(roster, new Set<string>(), false),
-      });
+      // ESPN failed and there is no cache to fall back on. Spec says ESPN
+      // failures must show no pills AND no "not announced" note — returning
+      // 503 routes the page's !fieldRes.ok branch into its silent catch path.
+      return NextResponse.json(
+        { error: 'Field unavailable' },
+        { status: 503 },
+      );
     }
 
     const statuses = computeFieldStatuses(roster, new Set(field.espn_ids), field.published);
