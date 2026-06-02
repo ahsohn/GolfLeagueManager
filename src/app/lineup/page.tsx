@@ -275,7 +275,7 @@ function LineupContent() {
 
             {/* Field status hints */}
             {fieldLoading && (
-              <p className="text-sm text-charcoal-light mb-3">Checking who's in the field…</p>
+              <p className="text-sm text-charcoal-light mb-3">Checking who&apos;s in the field…</p>
             )}
             {!fieldLoading && fieldAvailable === false && (
               <p className="text-sm text-charcoal-light mb-3">
