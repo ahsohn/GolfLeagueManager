@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { Tournament } from '@/types';
+import type { FieldStatus } from '@/lib/field-status';
 
 interface RosterPlayer {
   slot: number;
@@ -14,6 +15,24 @@ interface RosterPlayer {
   isSelected: boolean;
   isDefault: boolean;
   canSelect: boolean;
+}
+
+function FieldPill({ status }: { status?: FieldStatus }) {
+  if (status === 'playing') {
+    return (
+      <span className="ml-2 text-xs font-semibold rounded-full px-2.5 py-0.5 bg-green-50 text-masters-green align-middle">
+        Playing
+      </span>
+    );
+  }
+  if (status === 'not_in_field') {
+    return (
+      <span className="ml-2 text-xs font-semibold rounded-full px-2.5 py-0.5 bg-gray-100 text-charcoal-light align-middle">
+        Not in field
+      </span>
+    );
+  }
+  return null;
 }
 
 function LineupContent() {
@@ -30,6 +49,9 @@ function LineupContent() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [showWarning, setShowWarning] = useState(false);
+  const [fieldStatuses, setFieldStatuses] = useState<Record<number, FieldStatus>>({});
+  const [fieldAvailable, setFieldAvailable] = useState<boolean | null>(null);
+  const [fieldLoading, setFieldLoading] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !team) {
@@ -65,6 +87,33 @@ function LineupContent() {
                 .filter((r: RosterPlayer) => r.isDefault)
                 .map((r: RosterPlayer) => r.slot)
             );
+          }
+
+          // Informational only — fetch ESPN field status without blocking the page.
+          setFieldLoading(true);
+          setFieldAvailable(null);
+          setFieldStatuses({});
+          try {
+            const fieldRes = await fetch(
+              `/api/lineup/field?teamId=${team.team_id}&tournamentId=${tid}`
+            );
+            if (!fieldRes.ok) throw new Error(`field API ${fieldRes.status}`);
+            const fieldData = await fieldRes.json();
+            if (fieldData.field_available && Array.isArray(fieldData.statuses)) {
+              const map: Record<number, FieldStatus> = {};
+              for (const s of fieldData.statuses) map[s.slot] = s.status;
+              setFieldStatuses(map);
+              setFieldAvailable(true);
+            } else {
+              setFieldStatuses({});
+              setFieldAvailable(fieldData.field_available === false ? false : null);
+            }
+          } catch {
+            // ESPN/network failure — leave pills hidden, no note.
+            setFieldStatuses({});
+            setFieldAvailable(null);
+          } finally {
+            setFieldLoading(false);
           }
         }
       };
@@ -224,6 +273,16 @@ function LineupContent() {
               </div>
             </div>
 
+            {/* Field status hints */}
+            {fieldLoading && (
+              <p className="text-sm text-charcoal-light mb-3">Checking who&apos;s in the field…</p>
+            )}
+            {!fieldLoading && fieldAvailable === false && (
+              <p className="text-sm text-charcoal-light mb-3">
+                Field not announced yet — playing status will appear closer to the tournament.
+              </p>
+            )}
+
             {/* Golfer List */}
             <div className="space-y-3 mb-6">
               {roster.map((player, index) => (
@@ -247,6 +306,7 @@ function LineupContent() {
                       <span className="font-medium text-charcoal">
                         {player.golfer_name}
                       </span>
+                      <FieldPill status={fieldStatuses[player.slot]} />
                       {!player.canSelect && (
                         <span className="ml-2 text-sm text-charcoal-light">
                           (max uses reached)

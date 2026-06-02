@@ -83,6 +83,7 @@ Use a separate Neon database branch for testing. Switch via `DATABASE_URL` env v
 | GET | /api/tournaments/[id] | Tournament detail with lineups |
 | GET | /api/roster/[teamId] | Team roster |
 | GET | /api/lineup | Get lineup state |
+| GET | /api/lineup/field | Per-slot ESPN field status (playing / not in field) |
 | POST | /api/lineup | Submit/update lineup (slots) |
 | GET | /api/waivers/available | Available golfers |
 | GET | /api/waivers/history | Waiver transaction history |
@@ -119,6 +120,7 @@ export async function GET() {
 - `src/app/api/tournaments/[tournamentId]/route.ts` - Tournament detail with lineups/scores
 - `src/app/api/roster/[teamId]/route.ts` - Team roster (changes with waivers)
 - `src/app/api/lineup/route.ts` - Lineup state
+- `src/app/api/lineup/field/route.ts` - ESPN field status for a team's roster
 - `src/app/api/waivers/available/route.ts` - Available golfers for waivers
 - `src/app/api/waivers/history/route.ts` - Waiver transaction history
 - `src/app/api/team/[teamId]/route.ts` - Public team roster view
