@@ -1,6 +1,6 @@
 import { mergeProposedResults } from '@/lib/scoring/merge-proposed-results';
 import type { HistoryByEspnId } from '@/lib/scoring/types';
-import type { PlayerSeasonHistory } from '@/lib/egolfapi';
+import type { LeaderboardEntry, PlayerSeasonHistory, PlayerStatus } from '@/lib/egolfapi';
 
 const playerA = { espnId: '9478', displayName: 'Scottie Scheffler', shortName: 'S. Scheffler', normalizedName: 'scottie scheffler' };
 const playerB = { espnId: '5467', displayName: 'Rory McIlroy', shortName: 'R. McIlroy', normalizedName: 'rory mcilroy' };
@@ -114,5 +114,91 @@ describe('mergeProposedResults', () => {
     );
     expect(result.proposed[0].status).toBe('withdrew');
     expect(result.proposed[0].position_display).toBe('WD');
+  });
+
+  describe('leaderboard overlay (authoritative per-event FedEx points)', () => {
+    const lbEntry = (
+      espnId: string,
+      cupPoints: number | null,
+      status: PlayerStatus = 'active',
+      positionDisplay = 'T5',
+    ): LeaderboardEntry => ({
+      player: { espnId, displayName: '', shortName: null, normalizedName: '' },
+      position: null,
+      positionDisplay,
+      tied: false,
+      scoreToPar: null,
+      scoreToParDisplay: null,
+      totalStrokes: null,
+      cupPoints,
+      status,
+      notStarted: false,
+      thru: null,
+      thruDisplay: null,
+      teeTime: null,
+      rounds: [],
+    });
+
+    it('prefers leaderboard cupPoints over the stale player-history value', () => {
+      // History reports 0 (the bug this fixes); leaderboard has the real 250.
+      const staleHistory: PlayerSeasonHistory = {
+        player: playerA, season: 2026,
+        results: [{ player: playerA, eventId: '401002', eventName: 'Genesis', positionDisplay: 'T6', fedexPoints: 0 }],
+      };
+      const result = mergeProposedResults(
+        [lineups[0]],
+        new Map([['9478', staleHistory]]),
+        '401002',
+        new Map([['9478', lbEntry('9478', 250, 'active', 'T6')]]),
+      );
+      expect(result.proposed[0].status).toBe('played');
+      expect(result.proposed[0].fetched_fedex_points).toBe(250);
+      expect(result.proposed[0].position_display).toBe('T6');
+    });
+
+    it('falls back to history when the leaderboard cupPoints is unpublished (null)', () => {
+      const result = mergeProposedResults(
+        [lineups[0]],
+        new Map([['9478', historyA]]),
+        '401002',
+        new Map([['9478', lbEntry('9478', null)]]),
+      );
+      expect(result.proposed[0].status).toBe('played');
+      expect(result.proposed[0].fetched_fedex_points).toBe(220); // from historyA
+    });
+
+    it('maps a cut leaderboard entry to missed_cut with MC display and 0 points', () => {
+      const result = mergeProposedResults(
+        [lineups[0]],
+        new Map(),
+        '401002',
+        new Map([['9478', lbEntry('9478', 0, 'cut')]]),
+      );
+      expect(result.proposed[0].status).toBe('missed_cut');
+      expect(result.proposed[0].position_display).toBe('MC');
+      expect(result.proposed[0].fetched_fedex_points).toBe(0);
+    });
+
+    it('maps a withdrawn leaderboard entry to withdrew', () => {
+      const result = mergeProposedResults(
+        [lineups[0]],
+        new Map(),
+        '401002',
+        new Map([['9478', lbEntry('9478', 0, 'wd')]]),
+      );
+      expect(result.proposed[0].status).toBe('withdrew');
+      expect(result.proposed[0].position_display).toBe('WD');
+    });
+
+    it('falls back to did_not_play when a golfer is absent from the leaderboard field', () => {
+      const result = mergeProposedResults(
+        [lineups[1]], // Rory, history with no event entry
+        new Map([['5467', historyB]]),
+        '401002',
+        new Map([['9478', lbEntry('9478', 250)]]), // only Scheffler in field
+      );
+      expect(result.proposed[0].status).toBe('did_not_play');
+      expect(result.proposed[0].fetched_fedex_points).toBe(0);
+    });
   });
 });

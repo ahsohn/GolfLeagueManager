@@ -53,6 +53,7 @@ function board(id: string, espnIds: string[]): Leaderboard {
       scoreToPar: null,
       scoreToParDisplay: null,
       totalStrokes: null,
+      cupPoints: null,
       status: 'scheduled',
       notStarted: true,
       thru: null,

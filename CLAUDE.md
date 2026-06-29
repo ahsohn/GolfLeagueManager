@@ -139,3 +139,15 @@ curl -X POST https://fedexfantasy.ahsdesigns.com/api/admin/recalculate-standings
 ```
 
 **Best Practice:** Always use the Admin Results page (`/admin/results/[tournamentId]`) to enter scores. It updates both `lineups.fedex_points` AND recalculates the `standings` table automatically.
+
+### Fetch Scores Returns Mostly Zero FedEx Points
+
+**Problem:** Right after a tournament ends, clicking "Fetch Scores" on the Admin Results page fills in finishing positions but shows `0` FedEx points for most/all golfers, even though ESPN's leaderboard already displays the points.
+
+**Root Cause:** ESPN exposes per-event FedEx points in two places that publish on different schedules:
+- The **player-history endpoint** (`athletes/{id}/stats`) — its per-event `cupPoints` stat lags and reports `0` for hours/days after an event finishes.
+- The **event leaderboard endpoint** (`leaderboard?event=...`) — its per-competitor `statistics.cupPoints` is correct immediately when the event finishes.
+
+`fetch-scores` originally read only the player-history endpoint, so it picked up the stale zeros.
+
+**Solution:** `/api/admin/fetch-scores` now overlays the event leaderboard on top of the player-history results (`parseLeaderboard` extracts `cupPoints`; `mergeProposedResults` prefers the leaderboard and falls back to history when the leaderboard has no published result for a golfer). If the leaderboard fetch fails, it falls back to the player-history behavior. No action needed beyond re-running "Fetch Scores".

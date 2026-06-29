@@ -50,6 +50,12 @@ export interface LeaderboardEntry {
   scoreToPar: number | null;
   scoreToParDisplay: string | null;
   totalStrokes: number | null;
+  // FedEx Cup points ESPN awarded for THIS event. Read from the leaderboard's
+  // per-competitor `statistics` (stat name `cupPoints`). `null` means the stat
+  // was absent (event still in progress / not yet published). Unlike the
+  // per-player history endpoint, the leaderboard publishes this immediately
+  // when an event finishes, so it is the authoritative source for scoring.
+  cupPoints: number | null;
   status: PlayerStatus;
   notStarted: boolean;
   thru: number | null;
