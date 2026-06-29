@@ -90,6 +90,7 @@ Use a separate Neon database branch for testing. Switch via `DATABASE_URL` env v
 | POST | /api/waivers | Execute waiver swap |
 | GET | /api/team/[teamId] | Public team roster view |
 | POST | /api/admin/tournament | Create/update tournament |
+| POST | /api/admin/fetch-scores | Propose FedEx points for a tournament from ESPN (leaderboard + player history; no DB writes) |
 | POST | /api/admin/results | Enter tournament results |
 
 ## Known Issues & Solutions
