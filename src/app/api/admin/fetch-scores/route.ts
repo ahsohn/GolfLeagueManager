@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { unstable_noStore as noStore } from 'next/cache';
 import { sql } from '@/lib/db';
-import { ESPNClient } from '@/lib/egolfapi';
+import { ESPNClient, type LeaderboardEntry } from '@/lib/egolfapi';
 import {
   fetchAndCacheHistories,
   mergeProposedResults,
@@ -98,7 +98,25 @@ export async function POST(request: NextRequest) {
 
     const client = new ESPNClient({ delayMs: 500 });
     const histories = await fetchAndCacheHistories(uniqueEspnIds, season, io, client);
-    const merged = mergeProposedResults(lineups, histories, espnEventId);
+
+    // The event leaderboard is the authoritative source for per-event FedEx
+    // points: it publishes cupPoints the moment an event finishes, while the
+    // per-player history endpoint lags and reports 0 for hours/days afterward.
+    // Overlay it on top of the history-based results; merge falls back to
+    // history for any golfer the leaderboard doesn't cover.
+    const leaderboardByEspnId = new Map<string, LeaderboardEntry>();
+    try {
+      const board = await client.getEventField(espnEventId, season);
+      if (board && board.tournament.id === espnEventId) {
+        for (const entry of board.entries) {
+          if (entry.player.espnId) leaderboardByEspnId.set(entry.player.espnId, entry);
+        }
+      }
+    } catch (err) {
+      console.warn('fetch-scores: event leaderboard fetch failed, using player history only:', err);
+    }
+
+    const merged = mergeProposedResults(lineups, histories, espnEventId, leaderboardByEspnId);
 
     // If every fetch failed, surface as a 502 — likely an ESPN-wide outage.
     const fetchAttempts = uniqueEspnIds.length;

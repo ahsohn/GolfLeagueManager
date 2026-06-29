@@ -54,6 +54,21 @@ function parseScoreToPar(value: unknown): number | null {
   return Number.isNaN(n) ? null : n;
 }
 
+function parseCupPoints(competitor: any): number | null {
+  // ESPN exposes per-event FedEx points on the leaderboard competitor under
+  // `statistics` (stat name `cupPoints`). Absent while the event is live or
+  // before ESPN publishes points — return null so callers can distinguish
+  // "not published" from a legitimate 0 (e.g. a missed cut).
+  const stats = competitor?.statistics ?? [];
+  for (const stat of stats) {
+    if (stat?.name === "cupPoints") {
+      const v = Number(stat.value ?? stat.displayValue);
+      return Number.isNaN(v) ? null : Math.trunc(v);
+    }
+  }
+  return null;
+}
+
 function parseRound(round: any): RoundScore {
   const hasStarted = "value" in round || "displayValue" in round;
   const strokesRaw = round.value;
@@ -129,6 +144,7 @@ export function parseLeaderboard(payload: any): Leaderboard | null {
       scoreToPar: parseScoreToPar(scoreDisplay),
       scoreToParDisplay: scoreDisplay,
       totalStrokes: typeof scoreValue === "number" ? Math.trunc(scoreValue) : null,
+      cupPoints: parseCupPoints(c),
       status,
       notStarted,
       thru: cStatus.thru ?? null,

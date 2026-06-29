@@ -16,6 +16,17 @@ Replace the manual CSV-scraper round-trip used to populate `lineups.fedex_points
 3. Runs an external Python scraper that fills in `fedex_points`.
 4. Uploads the CSV back; the page submits to `/api/admin/results`, which updates `lineups.fedex_points` and recalculates `standings.total_points`.
 
+> **Amendment (2026-06-29):** The claim below that `getPlayerHistory` is "the only
+> ESPN endpoint that exposes per-event FedEx points" turned out to be inaccurate.
+> The event leaderboard (`leaderboard?event=…`) carries correct per-competitor
+> `cupPoints` in each competitor's `statistics` array, and publishes it
+> *immediately* when an event finishes — whereas the player-history endpoint's
+> per-event `cupPoints` lags and reports `0` for hours/days afterward. This caused
+> "Fetch Scores" to show zero points for most golfers right after a tournament.
+> `fetch-scores` now overlays the event leaderboard as the authoritative source
+> for per-event points and falls back to player history. See CLAUDE.md →
+> "Fetch Scores Returns Mostly Zero FedEx Points".
+
 ### What `egolfapi` provides
 
 The package (private GitHub repo, sibling to GLM) exposes a typed client over ESPN's PGA endpoints. Relevant for scoring:

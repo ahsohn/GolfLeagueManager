@@ -196,6 +196,9 @@ export class ESPNClient {
       scoreToPar: null,
       scoreToParDisplay: null,
       totalStrokes: null,
+      // The player-history aggregation endpoint carries no per-event FedEx
+      // points, so leave null — callers fall back to other sources.
+      cupPoints: null,
       status:
         positionDisplay === "MC"
           ? ("cut" as const)
